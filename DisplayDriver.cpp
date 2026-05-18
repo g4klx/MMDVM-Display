@@ -662,17 +662,17 @@ void CDisplayDriver::parseDStar(const nlohmann::json& json)
 
 		std::string action = json["action"];
 		if (action == "start" || action == "late_entry") {
-			if (!json.contains("source_cs") || !json.contains("source_ext") ||
-			    !json.contains("destination_cs") || !json.contains("source"))
+			if (!json.contains("src_callsign") || !json.contains("src_ext") ||
+			    !json.contains("dst_callsign") || !json.contains("source"))
 				return;
 
-			std::string source_cs      = json["source_cs"];
-			std::string source_ext     = json["source_ext"];
-			std::string destination_cs = json["destination_cs"];
-			std::string reflector      = json.value("reflector", std::string());
-			std::string source         = json["source"] == "rf" ? "R" : "N";
+			std::string src_callsign = json["src_callsign"];
+			std::string src_ext      = json["src_ext"];
+			std::string dst_callsign = json["dst_callsign"];
+			std::string reflector    = json.value("reflector", std::string());
+			std::string source       = json["source"] == "rf" ? "R" : "N";
 
-			m_display->writeDStar(source_cs, source_ext, destination_cs, source, reflector);
+			m_display->writeDStar(src_callsign, src_ext, dst_callsign, source, reflector);
 		} else if (action == "end" || action == "lost") {
 			m_display->clearDStar();
 		}
@@ -692,18 +692,17 @@ void CDisplayDriver::parseDMR(const nlohmann::json& json)
 
 		std::string action = json["action"];
 		if (action == "start" || action == "late_entry") {
-			if (!json.contains("slot") || !json.contains("destination_id") ||
-			    !json.contains("destination_type") || !json.contains("source"))
+			if (!json.contains("slot")  || !json.contains("dst_id") ||
+			    !json.contains("group") || !json.contains("source"))
 				return;
 
-			int slot                     = json["slot"];
-			std::string source_info      = json.value("source_info", std::string());
-			int destination_id           = json["destination_id"];
-			std::string destination_type = json["destination_type"];
-			std::string source           = json["source"] == "rf" ? "R" : "N";
+			int slot             = json["slot"];
+			std::string src_info = json.value("src_info", std::string());
+			int dst_id           = json["dst_id"];
+			std::string group    = json["group"];
+			std::string source   = json["source"] == "rf" ? "R" : "N";
 
-			bool group = destination_type == "group";
-			m_display->writeDMR(slot, source_info, group, destination_id, source);
+			m_display->writeDMR(slot, src_info, group == "yes", dst_id, source);
 		} else if (action == "end" || action == "lost") {
 			if (!json.contains("slot"))
 				return;
@@ -726,16 +725,16 @@ void CDisplayDriver::parseYSF(const nlohmann::json& json)
 
 		std::string action = json["action"];
 		if (action == "start" || action == "late_entry") {
-			if (!json.contains("source_cs") || !json.contains("dg-id") ||
+			if (!json.contains("src_callsign") || !json.contains("dg-id") ||
 			    !json.contains("source"))
 				return;
 
-			std::string source_cs = json["source_cs"];
-			int dgId              = json["dg-id"];
-			std::string reflector = json.value("reflector", std::string());
-			std::string source    = json["source"] == "rf" ? "R" : "N";
+			std::string src_callsign = json["src_callsign"];
+			int dgId                 = json["dg-id"];
+			std::string reflector    = json.value("reflector", std::string());
+			std::string source       = json["source"] == "rf" ? "R" : "N";
 
-			m_display->writeFusion(source_cs, "ALL", dgId, source, reflector);
+			m_display->writeFusion(src_callsign, "ALL", dgId, source, reflector);
 		} else if (action == "end" || action == "lost") {
 			m_display->clearFusion();
 		}
@@ -755,17 +754,16 @@ void CDisplayDriver::parseP25(const nlohmann::json& json)
 
 		std::string action = json["action"];
 		if (action == "start" || action == "late_entry") {
-			if (!json.contains("destination_id") || !json.contains("destination_type") ||
+			if (!json.contains("dst_id") || !json.contains("group") ||
 			    !json.contains("source"))
 				return;
 
-			std::string source_info      = json.value("source_info", std::string());
-			int destination_id           = json["destination_id"];
-			std::string destination_type = json["destination_type"];
-			std::string source           = json["source"] == "rf" ? "R" : "N";
+			std::string src_info = json.value("src_info", std::string());
+			int dst_id           = json["dst_id"];
+			std::string group    = json["group"];
+			std::string source   = json["source"] == "rf" ? "R" : "N";
 
-			bool group = destination_type == "group";
-			m_display->writeP25(source_info, group, destination_id, source);
+			m_display->writeP25(src_info, group == "yes", dst_id, source);
 		} else if (action == "end" || action == "lost") {
 			m_display->clearP25();
 		}
@@ -785,17 +783,16 @@ void CDisplayDriver::parseNXDN(const nlohmann::json& json)
 
 		std::string action = json["action"];
 		if (action == "start" || action == "late_entry") {
-			if (!json.contains("destination_id") || !json.contains("destination_type") ||
+			if (!json.contains("dst_id") || !json.contains("group") ||
 			    !json.contains("source"))
 				return;
 
-			std::string source_info      = json.value("source_info", std::string());
-			int destination_id           = json["destination_id"];
-			std::string destination_type = json["destination_type"];
-			std::string source           = json["source"] == "rf" ? "R" : "N";
+			std::string src_info = json.value("src_info", std::string());
+			int dst_id           = json["dst_id"];
+			std::string group    = json["group"];
+			std::string source   = json["source"] == "rf" ? "R" : "N";
 
-			bool group = destination_type == "group";
-			m_display->writeNXDN(source_info, group, destination_id, source);
+			m_display->writeNXDN(src_info, group == "yes", dst_id, source);
 		} else if (action == "end" || action == "lost") {
 			m_display->clearNXDN();
 		}
