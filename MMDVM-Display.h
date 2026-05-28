@@ -16,8 +16,8 @@
  *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
-#if !defined(DisplayDriver_H)
-#define	DisplayDriver_H
+#if !defined(MMDVM_Display_H)
+#define	MMDVM_Display_H
 
 #include "ModemSerialPort.h"
 #include "Display.h"
@@ -27,11 +27,11 @@
 
 #include <string>
 
-class CDisplayDriver
+class CMMDVMDisplay
 {
 public:
-	CDisplayDriver(const std::string& confFile);
-	~CDisplayDriver();
+	CMMDVMDisplay(const std::string& confFile);
+	~CMMDVMDisplay();
 
 	int run();
 

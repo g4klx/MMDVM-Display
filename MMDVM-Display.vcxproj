@@ -22,7 +22,7 @@
     <VCProjectVersion>16.0</VCProjectVersion>
     <Keyword>Win32Proj</Keyword>
     <ProjectGuid>{01fd484d-e92a-4a73-a088-3d22f4be7a25}</ProjectGuid>
-    <RootNamespace>DisplayDriver</RootNamespace>
+    <RootNamespace>MMDVM-Display</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
@@ -170,7 +170,7 @@
     <ClInclude Include="Conf.h" />
     <ClInclude Include="Defines.h" />
     <ClInclude Include="Display.h" />
-    <ClInclude Include="DisplayDriver.h" />
+    <ClInclude Include="MMDVM-Display.h" />
     <ClInclude Include="Dummy.h" />
     <ClInclude Include="HD44780.h" />
     <ClInclude Include="LCDproc.h" />
@@ -194,7 +194,7 @@
   <ItemGroup>
     <ClCompile Include="Conf.cpp" />
     <ClCompile Include="Display.cpp" />
-    <ClCompile Include="DisplayDriver.cpp" />
+    <ClCompile Include="MMDVM-Display.cpp" />
     <ClCompile Include="Dummy.cpp" />
     <ClCompile Include="HD44780.cpp" />
     <ClCompile Include="LCDproc.cpp" />

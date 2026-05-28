@@ -20,7 +20,7 @@
     <ClInclude Include="Display.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="DisplayDriver.h">
+    <ClInclude Include="MMDVM-Display.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="HD44780.h">
@@ -88,7 +88,7 @@
     <ClCompile Include="Display.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="DisplayDriver.cpp">
+    <ClCompile Include="MMDVM-Display.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="HD44780.cpp">

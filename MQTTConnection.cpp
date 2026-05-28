@@ -59,12 +59,12 @@ bool CMQTTConnection::open()
 {
 	char name[50U];
 #if defined(_WIN32) || defined(_WIN64)
-	::sprintf(name, "Display-Driver.%u", (unsigned)::_getpid());
+	::sprintf(name, "Display.%u", (unsigned)::_getpid());
 #else
-	::sprintf(name, "Display-Driver.%u", (unsigned)::getpid());
+	::sprintf(name, "Display.%u", (unsigned)::getpid());
 #endif
 
-	::fprintf(stdout, "Display-Driver (%s) connecting to MQTT as %s\n", m_name.c_str(), name);
+	::fprintf(stdout, "MMDVM-Display (%s) connecting to MQTT as %s\n", m_name.c_str(), name);
 
 	m_mosq = ::mosquitto_new(name, true, this);
 	if (m_mosq == nullptr){

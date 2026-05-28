@@ -3,7 +3,7 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 16
 VisualStudioVersion = 16.0.35826.135
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Display-Driver", "Display-Driver.vcxproj", "{01FD484D-E92A-4A73-A088-3D22F4BE7A25}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "MMDVM-Display", "MMDVM-Display.vcxproj", "{01FD484D-E92A-4A73-A088-3D22F4BE7A25}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "NextionUpdater", "NextionUpdater.vcxproj", "{59172A47-E19C-4E00-A426-73C1564B110F}"
 EndProject

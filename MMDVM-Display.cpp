@@ -16,7 +16,7 @@
  *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
-#include "DisplayDriver.h"
+#include "MMDVM-Display.h"
 #include "MQTTConnection.h"
 #include "UARTController.h"
 #include "TFTSurenoo.h"
@@ -54,9 +54,9 @@
 #endif
 
 #if defined(_WIN32) || defined(_WIN64)
-const char* DEFAULT_INI_FILE = "DisplayDriver.ini";
+const char* DEFAULT_INI_FILE = "MMDVM-Display.ini";
 #else
-const char* DEFAULT_INI_FILE = "/etc/DisplayDriver.ini";
+const char* DEFAULT_INI_FILE = "/etc/MMDVM-Display.ini";
 #endif
 
 static bool m_killed = false;
@@ -66,7 +66,7 @@ static bool m_reload = false;
 // In Log.cpp
 extern CMQTTConnection* m_mqtt;
 
-CDisplayDriver* driver = nullptr;
+CMMDVMDisplay* driver = nullptr;
 
 #if !defined(_WIN32) && !defined(_WIN64)
 static void sigHandler1(int signum)
@@ -88,10 +88,10 @@ int main(int argc, char** argv)
  		for (int currentArg = 1; currentArg < argc; ++currentArg) {
 			std::string arg = argv[currentArg];
 			if ((arg == "-v") || (arg == "--version")) {
-				::fprintf(stdout, "DisplayDriver version %s git #%.7s\n", VERSION, gitversion);
+				::fprintf(stdout, "MMDVM-Display version %s git #%.7s\n", VERSION, gitversion);
 				return 0;
 			} else if (arg.substr(0,1) == "-") {
-				::fprintf(stderr, "Usage: DisplayDriver [-v|--version] [filename]\n");
+				::fprintf(stderr, "Usage: MMDVM-Display [-v|--version] [filename]\n");
 				return 1;
 			} else {
 				iniFile = argv[currentArg];
@@ -111,25 +111,25 @@ int main(int argc, char** argv)
 	do {
 		m_signal = 0;
 
-		driver = new CDisplayDriver(std::string(iniFile));
+		driver = new CMMDVMDisplay(std::string(iniFile));
 		ret = driver->run();
 		delete driver;
 
 		switch (m_signal) {
 			case 2:
-				::LogInfo("DisplayDriver-%s exited on receipt of SIGINT", VERSION);
+				::LogInfo("MMDVM-Display-%s exited on receipt of SIGINT", VERSION);
 				break;
 			case 15:
-				::LogInfo("DisplayDriver-%s exited on receipt of SIGTERM", VERSION);
+				::LogInfo("MMDVM-Display-%s exited on receipt of SIGTERM", VERSION);
 				break;
 			case 1:
-				::LogInfo("DisplayDriver-%s exited on receipt of SIGHUP", VERSION);
+				::LogInfo("MMDVM-Display-%s exited on receipt of SIGHUP", VERSION);
 				break;
 			case 10:
-				::LogInfo("DisplayDriver-%s is restarting on receipt of SIGUSR1", VERSION);
+				::LogInfo("MMDVM-Display-%s is restarting on receipt of SIGUSR1", VERSION);
 				break;
 			default:
-				::LogInfo("DisplayDriver-%s exited on receipt of an unknown signal", VERSION);
+				::LogInfo("MMDVM-Display-%s exited on receipt of an unknown signal", VERSION);
 				break;
 		}
 	} while (m_signal == 10);
@@ -139,22 +139,22 @@ int main(int argc, char** argv)
 	return ret;
 }
 
-CDisplayDriver::CDisplayDriver(const std::string& confFile) :
+CMMDVMDisplay::CMMDVMDisplay(const std::string& confFile) :
 m_conf(confFile),
 m_display(nullptr),
 m_msp(nullptr)
 {
 }
 
-CDisplayDriver::~CDisplayDriver()
+CMMDVMDisplay::~CMMDVMDisplay()
 {
 }
 
-int CDisplayDriver::run()
+int CMMDVMDisplay::run()
 {
 	bool ret = m_conf.read();
 	if (!ret) {
-		::fprintf(stderr, "DisplayDriver: cannot read the .ini file\n");
+		::fprintf(stderr, "MMDVM-Display: cannot read the .ini file\n");
 		return 1;
 	}
 
@@ -223,13 +223,13 @@ int CDisplayDriver::run()
 	const std::string jsonName    = m_conf.getMMDVMName() + "/json";
 
 	std::vector<std::pair<std::string, void (*)(const unsigned char*, unsigned int)>> subscriptions;
-	subscriptions.push_back(std::make_pair(displayName, CDisplayDriver::onDisplay));
-	subscriptions.push_back(std::make_pair(jsonName,    CDisplayDriver::onJSON));
+	subscriptions.push_back(std::make_pair(displayName, CMMDVMDisplay::onDisplay));
+	subscriptions.push_back(std::make_pair(jsonName,    CMMDVMDisplay::onJSON));
 
 	m_mqtt = new CMQTTConnection(m_conf.getMQTTAddress(), m_conf.getMQTTPort(), m_conf.getMQTTName(), m_conf.getMQTTAuthEnabled(), m_conf.getMQTTUsername(), m_conf.getMQTTPassword(), subscriptions, m_conf.getMQTTKeepalive());
 	ret = m_mqtt->open();
 	if (!ret) {
-		::fprintf(stderr, "DisplayDriver: unable to start the MQTT Publisher\n");
+		::fprintf(stderr, "MMDVM-Display: unable to start the MQTT Publisher\n");
 		delete m_mqtt;
 		return 1;
 	}
@@ -247,10 +247,10 @@ int CDisplayDriver::run()
 		::close(STDOUT_FILENO);
 	}
 #endif
-	LogInfo("DisplayDriver-%s is starting", VERSION);
+	LogInfo("MMDVM-Display-%s is starting", VERSION);
 	LogInfo("Built %s %s (GitID #%.7s)", __TIME__, __DATE__, gitversion);
 
-	writeJSONMessage("DisplayDriver is starting");
+	writeJSONMessage("MMDVM-Display is starting");
 
 	ret = createDisplay();
 	if (!ret)
@@ -275,8 +275,8 @@ int CDisplayDriver::run()
 			CThread::sleep(10U);
 	}
 
-	LogInfo("DisplayDriver is stopping");
-	writeJSONMessage("DisplayDriver is stopping");
+	LogInfo("MMDVM-Display is stopping");
+	writeJSONMessage("MMDVM-Display is stopping");
 
 	m_display->close();
 	delete m_display;
@@ -284,7 +284,7 @@ int CDisplayDriver::run()
 	return 0;
 }
 
-bool CDisplayDriver::createDisplay()
+bool CMMDVMDisplay::createDisplay()
 {
 	std::string type = m_conf.getDisplay();
 
@@ -349,7 +349,7 @@ bool CDisplayDriver::createDisplay()
 			unsigned int baudrate = 9600U;
 			if (screenLayout == 4U)
 				baudrate = 115200U;
-			
+
 			LogInfo("    Display baudrate: %u ", baudrate);
 			ISerialPort* serial = new CUARTController(port, baudrate);
 			m_display = new CNextion(m_conf.getCallsign(), m_conf.getId(), m_conf.getDuplex(), serial, brightness, displayClock, utc, idleBrightness, screenLayout, displayTempInF);
@@ -441,7 +441,7 @@ bool CDisplayDriver::createDisplay()
 	return true;
 }
 
-void CDisplayDriver::writeJSONMessage(const std::string& message)
+void CMMDVMDisplay::writeJSONMessage(const std::string& message)
 {
 	nlohmann::json json;
 
@@ -451,7 +451,7 @@ void CDisplayDriver::writeJSONMessage(const std::string& message)
 	WriteJSON("status", json);
 }
 
-void CDisplayDriver::readDisplay(const unsigned char* data, unsigned int length)
+void CMMDVMDisplay::readDisplay(const unsigned char* data, unsigned int length)
 {
 	assert(data != nullptr);
 	assert(length > 0U);
@@ -460,7 +460,7 @@ void CDisplayDriver::readDisplay(const unsigned char* data, unsigned int length)
 		m_msp->readData(data, length);
 }
 
-void CDisplayDriver::readJSON(const std::string& text)
+void CMMDVMDisplay::readJSON(const std::string& text)
 {
 	LogDebug("Incoming JSON - \"%s\"", text.c_str());
 
@@ -538,7 +538,7 @@ void CDisplayDriver::readJSON(const std::string& text)
 	}
 }
 
-void CDisplayDriver::parseMMDVM(const nlohmann::json& json)
+void CMMDVMDisplay::parseMMDVM(const nlohmann::json& json)
 {
 	assert(m_display != nullptr);
 
@@ -563,7 +563,7 @@ void CDisplayDriver::parseMMDVM(const nlohmann::json& json)
 	}
 }
 
-void CDisplayDriver::parseRSSI(const nlohmann::json& json)
+void CMMDVMDisplay::parseRSSI(const nlohmann::json& json)
 {
 	assert(m_display != nullptr);
 
@@ -596,7 +596,7 @@ void CDisplayDriver::parseRSSI(const nlohmann::json& json)
 	}
 }
 
-void CDisplayDriver::parseBER(const nlohmann::json& json)
+void CMMDVMDisplay::parseBER(const nlohmann::json& json)
 {
 	assert(m_display != nullptr);
 
@@ -627,7 +627,7 @@ void CDisplayDriver::parseBER(const nlohmann::json& json)
 	}
 }
 
-void CDisplayDriver::parseText(const nlohmann::json& json)
+void CMMDVMDisplay::parseText(const nlohmann::json& json)
 {
 	assert(m_display != nullptr);
 
@@ -652,7 +652,7 @@ void CDisplayDriver::parseText(const nlohmann::json& json)
 	}
 }
 
-void CDisplayDriver::parseDStar(const nlohmann::json& json)
+void CMMDVMDisplay::parseDStar(const nlohmann::json& json)
 {
 	assert(m_display != nullptr);
 
@@ -682,7 +682,7 @@ void CDisplayDriver::parseDStar(const nlohmann::json& json)
 	}
 }
 
-void CDisplayDriver::parseDMR(const nlohmann::json& json)
+void CMMDVMDisplay::parseDMR(const nlohmann::json& json)
 {
 	assert(m_display != nullptr);
 
@@ -715,7 +715,7 @@ void CDisplayDriver::parseDMR(const nlohmann::json& json)
 	}
 }
 
-void CDisplayDriver::parseYSF(const nlohmann::json& json)
+void CMMDVMDisplay::parseYSF(const nlohmann::json& json)
 {
 	assert(m_display != nullptr);
 
@@ -744,7 +744,7 @@ void CDisplayDriver::parseYSF(const nlohmann::json& json)
 	}
 }
 
-void CDisplayDriver::parseP25(const nlohmann::json& json)
+void CMMDVMDisplay::parseP25(const nlohmann::json& json)
 {
 	assert(m_display != nullptr);
 
@@ -773,7 +773,7 @@ void CDisplayDriver::parseP25(const nlohmann::json& json)
 	}
 }
 
-void CDisplayDriver::parseNXDN(const nlohmann::json& json)
+void CMMDVMDisplay::parseNXDN(const nlohmann::json& json)
 {
 	assert(m_display != nullptr);
 
@@ -802,7 +802,7 @@ void CDisplayDriver::parseNXDN(const nlohmann::json& json)
 	}
 }
 
-void CDisplayDriver::parsePOCSAG(const nlohmann::json& json)
+void CMMDVMDisplay::parsePOCSAG(const nlohmann::json& json)
 {
 	assert(m_display != nullptr);
 
@@ -826,7 +826,7 @@ void CDisplayDriver::parsePOCSAG(const nlohmann::json& json)
 	}
 }
 
-void CDisplayDriver::parseFM(const nlohmann::json& json)
+void CMMDVMDisplay::parseFM(const nlohmann::json& json)
 {
 	assert(m_display != nullptr);
 
@@ -862,7 +862,7 @@ void CDisplayDriver::parseFM(const nlohmann::json& json)
 	}
 }
 
-void CDisplayDriver::onDisplay(const unsigned char* data, unsigned int length)
+void CMMDVMDisplay::onDisplay(const unsigned char* data, unsigned int length)
 {
 	assert(data != nullptr);
 	assert(length > 0U);
@@ -871,7 +871,7 @@ void CDisplayDriver::onDisplay(const unsigned char* data, unsigned int length)
 	driver->readDisplay(data, length);
 }
 
-void CDisplayDriver::onJSON(const unsigned char* data, unsigned int length)
+void CMMDVMDisplay::onJSON(const unsigned char* data, unsigned int length)
 {
 	assert(data != nullptr);
 	assert(length > 0U);

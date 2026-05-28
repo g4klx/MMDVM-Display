@@ -28,16 +28,16 @@ DEPS = $(SRCS:.cpp=.d)
 #CFLAGS  = -g -O3 -Wall -std=c++0x -pthread -DUSE_HD44780 -DUSE_PCF8574_DISPLAY -I/usr/local/include
 #LIBS    = -lwiringPi -lwiringPiDev -lpthread -lutil -lmosquitto
 
-OBJS1 =	Conf.o Display.o DisplayDriver.o Dummy.o HD44780.o LCDproc.o Log.o MQTTConnection.o ModemSerialPort.o Mutex.o NetworkInfo.o \
+OBJS1 =	Conf.o Display.o MMDVM-Display.o Dummy.o HD44780.o LCDproc.o Log.o MQTTConnection.o ModemSerialPort.o Mutex.o NetworkInfo.o \
 	Nextion.o OLED.o SerialPort.o StopWatch.o TFTSurenoo.o Thread.o Timer.o UARTController.o Utils.o
 
 OBJS2 =	Conf.o Log.o MQTTConnection.o ModemSerialPort.o Mutex.o NextionUpdater.o SerialPort.o StopWatch.o Thread.o Timer.o \
 	UARTController.o Utils.o
 
-all:		DisplayDriver NextionUpdater
+all:		MMDVM-Display NextionUpdater
 
-DisplayDriver:	$(OBJS1) 
-		$(CXX) $(OBJS1) $(LDFLAGS) $(LIBS) -o DisplayDriver
+MMDVM-Display:	$(OBJS1) 
+		$(CXX) $(OBJS1) $(LDFLAGS) $(LIBS) -o MMDVM-Display
 
 NextionUpdater:	$(OBJS2) 
 		$(CXX) $(OBJS2) $(LDFLAGS) $(LIBS) -o NextionUpdater
@@ -46,7 +46,7 @@ NextionUpdater:	$(OBJS2)
 		$(CXX) $(CFLAGS) -c -o $@ $<
 -include $(DEPS)
 
-DisplayDriver.o: GitVersion.h FORCE
+MMDVM-Display.o: GitVersion.h FORCE
 NextionUpdater.o: GitVersion.h FORCE
 
 .PHONY: GitVersion.h
@@ -54,11 +54,11 @@ NextionUpdater.o: GitVersion.h FORCE
 FORCE:
 
 install:
-		install -m 755 DisplayDriver /usr/local/bin/
+		install -m 755 MMDVM-Display /usr/local/bin/
 		install -m 755 NextionUpdater /usr/local/bin/
 
 clean:
-		$(RM) DisplayDriver NextionUpdater *.o *.d *.bak *~ GitVersion.h
+		$(RM) MMDVM-Display NextionUpdater *.o *.d *.bak *~ GitVersion.h
 
 # Export the current git version if the index file exists, else 000...
 GitVersion.h:
