@@ -5,7 +5,7 @@
 *.o
 *.user
 GitVersion.h
-DisplayDriver
+MMDVM-Display
 NextionUpdater
 x64
 Debug
