@@ -34,8 +34,8 @@ public:
 	std::string  getCallsign() const;
 	unsigned int getId() const;
 	bool         getDuplex() const;
-  	std::string  getMMDVMName() const;
 	std::string  getDisplay() const;
+	bool         getTemperatureInF() const;
 	bool         getDaemon() const;
 
 	// The Log section
@@ -50,6 +50,9 @@ public:
 	bool           getMQTTAuthEnabled() const;
 	std::string    getMQTTUsername() const;
 	std::string    getMQTTPassword() const;
+	std::string    getMQTTHostName() const;
+	std::string    getMQTTInfoName() const;
+	std::string    getHostConfName() const;
 
 	// The TFT Surenoo section
 	std::string  getTFTSurenooPort() const;
@@ -98,8 +101,8 @@ private:
 	std::string  m_callsign;
 	unsigned int m_id;
 	bool         m_duplex;
-	std::string  m_mmdvmName;
 	std::string  m_display;
+	bool         m_temperatureInF;
 	bool         m_daemon;
 
 	unsigned int m_logMQTTLevel;
@@ -112,6 +115,9 @@ private:
 	bool         m_mqttAuthEnabled;
 	std::string  m_mqttUsername;
 	std::string  m_mqttPassword;
+	std::string  m_mqttHostName;
+	std::string  m_mqttInfoName;
+	std::string  m_hostConfName;
 
 	std::string  m_tftSurenooPort;
 	unsigned int m_tftSurenooBrightness;

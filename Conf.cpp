@@ -43,8 +43,8 @@ m_file(file),
 m_callsign(),
 m_id(0U),
 m_duplex(true),
-m_mmdvmName("mmdvm"),
 m_display("Dummy"),
+m_temperatureInF(false),
 m_daemon(false),
 m_logMQTTLevel(0U),
 m_logDisplayLevel(0U),
@@ -55,6 +55,9 @@ m_mqttName("display-driver"),
 m_mqttAuthEnabled(false),
 m_mqttUsername(),
 m_mqttPassword(),
+m_mqttHostName("host"),
+m_mqttInfoName("info"),
+m_hostConfName("MMDVM-Host"),
 m_tftSurenooPort("/dev/ttyAMA0"),
 m_tftSurenooBrightness(50U),
 m_tftSurenooScreenLayout(0U),
@@ -167,10 +170,10 @@ bool CConf::read()
 				m_id = (unsigned int)::atoi(value);
 			else if (::strcmp(key, "Duplex") == 0)
 				m_duplex = ::atoi(value) == 1;
-			else if (::strcmp(key, "MMDVMName") == 0)
-				m_mmdvmName = value;
 			else if (::strcmp(key, "Display") == 0)
 				m_display = value;
+			else if (::strcmp(key, "TemperatureInF") == 0)
+				m_temperatureInF = ::atoi(value) == 1;
 			else if (::strcmp(key, "Daemon") == 0)
 				m_daemon = ::atoi(value) == 1;
 		} else if (section == SECTION::LOG) {
@@ -193,6 +196,12 @@ bool CConf::read()
 				m_mqttUsername = value;
 			else if (::strcmp(key, "Password") == 0)
 				m_mqttPassword = value;
+			else if (::strcmp(key, "HostMQTTName") == 0)
+				m_mqttHostName = value;
+			else if (::strcmp(key, "InfoMQTTName") == 0)
+				m_mqttInfoName = value;
+			else if (::strcmp(key, "HostConfName") == 0)
+				m_hostConfName = value;
 		} else if (section == SECTION::TFT_SURENOO) {
 			if (::strcmp(key, "Port") == 0)
 				m_tftSurenooPort = value;
@@ -291,14 +300,14 @@ bool CConf::getDuplex() const
 	return m_duplex;
 }
 
-std::string CConf::getMMDVMName() const
-{
-	return m_mmdvmName;
-}
-
 std::string CConf::getDisplay() const
 {
 	return m_display;
+}
+
+bool CConf::getTemperatureInF() const
+{
+	return m_temperatureInF;
 }
 
 bool CConf::getDaemon() const
@@ -334,6 +343,21 @@ unsigned int CConf::getMQTTKeepalive() const
 std::string CConf::getMQTTName() const
 {
 	return m_mqttName;
+}
+
+std::string CConf::getMQTTHostName() const
+{
+	return m_mqttHostName;
+}
+
+std::string CConf::getMQTTInfoName() const
+{
+	return m_mqttInfoName;
+}
+
+std::string CConf::getHostConfName() const
+{
+	return m_hostConfName;
 }
 
 bool CConf::getMQTTAuthEnabled() const

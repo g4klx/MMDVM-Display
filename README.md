@@ -1,8 +1,13 @@
-This program allows displays to be used with MQTT equipped versions of the MMDVMHost. It takes
+This program allows displays to be used with MQTT equipped versions of the MMDVM-Host. It takes
 the structured information, in JSON format, provided by the host and converts it for use by
-displays. It currently supports the display types that were in the MMDVMHost, but making this
+displays. It currently supports the display types that were in the MMDVM-Host, but making this
 handling external and simpler should allow for easier modifications and the addition of new display
 types.
+
+Environmental information that is not supplied by the Host is obtained via JSON created by the MMDVM-Info
+program. Some of this is supplied periodically automatically by the Info program, and some of it needs to be polled by
+the Display program since it is only needed once and will not change for the duration of running of the
+MMDVM system.
 
 It builds on 32-bit and 64-bit Linux. It can control various displays, these are:
 

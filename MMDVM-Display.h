@@ -21,6 +21,7 @@
 
 #include "ModemSerialPort.h"
 #include "Display.h"
+#include "Timer.h"
 #include "Conf.h"
 
 #include <nlohmann/json.hpp>
@@ -39,12 +40,17 @@ private:
 	CConf             m_conf;
 	CDisplay*         m_display;
 	CModemSerialPort* m_msp;
+	std::string       m_hostConfName;
+	std::string       m_mqttInfoName;
+	bool              m_temperatureInF;
+	CTimer            m_confTimer;
 
 	bool createDisplay();
 
 	void writeJSONMessage(const std::string& message);
 
-	void readJSON(const std::string& text);
+	void readHost(const std::string& text);
+	void readInfo(const std::string& text);
 	void readDisplay(const unsigned char* data, unsigned int length);
 
 	void parseMMDVM(const nlohmann::json& json);
@@ -59,8 +65,16 @@ private:
 	void parsePOCSAG(const nlohmann::json& json);
 	void parseFM(const nlohmann::json& json);
 
+	void parseCPU(const nlohmann::json& json);
+	void parsePrograms(const nlohmann::json& json);
+	void parseAddresses(const nlohmann::json& json);
+	void parseHostConfig(const nlohmann::json& json);
+
+	void pollHostConfig();
+
 	static void onDisplay(const unsigned char* data, unsigned int length);
-	static void onJSON(const unsigned char* data, unsigned int length);
+	static void onHost(const unsigned char* data, unsigned int length);
+	static void onInfo(const unsigned char* data, unsigned int length);
 };
 
 #endif

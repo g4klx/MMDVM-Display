@@ -307,6 +307,14 @@ void CDisplay::writeCW()
 	writeCWInt();
 }
 
+void CDisplay::writeCPU(const std::string& temp, const std::string& freq, const std::string& load, const std::string& cpu)
+{
+}
+
+void CDisplay::writeInfo(const std::string& rxFrequency, const std::string& txFrequency, const std::string& location)
+{
+}
+
 void CDisplay::clock(unsigned int ms)
 {
 	m_timer1.clock(ms);

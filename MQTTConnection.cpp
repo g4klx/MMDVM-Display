@@ -106,6 +106,11 @@ bool CMQTTConnection::publish(const char* topic, const std::string& text)
 	return publish(topic, (unsigned char*)text.c_str(), (unsigned int)text.size());
 }
 
+bool CMQTTConnection::publish(const std::string& topic, const std::string& text)
+{
+	return publish(topic.c_str(), (unsigned char*)text.c_str(), (unsigned int)text.size());
+}
+
 bool CMQTTConnection::publish(const char* topic, const unsigned char* data, unsigned int len)
 {
 	assert(topic != nullptr);

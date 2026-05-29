@@ -76,6 +76,9 @@ public:
 
 	void writeCW();
 
+	void writeCPU(const std::string& temp, const std::string& freq, const std::string& load, const std::string& cpu);
+	void writeInfo(const std::string& rxFrequency, const std::string& txFrequency, const std::string& location);
+
 	virtual void close() = 0;
 
 	void clock(unsigned int ms);

@@ -43,6 +43,7 @@ public:
 
 	bool publish(const char* topic, const char* text);
 	bool publish(const char* topic, const std::string& text);
+	bool publish(const std::string& topic, const std::string& text);
 	bool publish(const char* topic, const unsigned char* data, unsigned int len);
 
 	void close();

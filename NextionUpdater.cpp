@@ -151,7 +151,7 @@ int CNextionUpdater::run()
 
 	::LogInitialise(m_conf.getLogDisplayLevel(), m_conf.getLogMQTTLevel());
 
-	const std::string displayName = m_conf.getMMDVMName() + "/display-out";
+	const std::string displayName = m_conf.getMQTTHostName() + "/display-out";
 
 	std::vector<std::pair<std::string, void (*)(const unsigned char*, unsigned int)>> subscriptions;
 	subscriptions.push_back(std::make_pair(displayName, CNextionUpdater::onDisplay));
@@ -275,7 +275,7 @@ bool CNextionUpdater::uploadViaMQTT(FILE* file, long fileSize)
 {
 	assert(file != nullptr);
 
-	m_msp = new CModemSerialPort(m_conf.getMMDVMName());
+	m_msp = new CModemSerialPort(m_conf.getMQTTHostName());
 
 	bool ret = m_msp->open();
 	if (!ret) {

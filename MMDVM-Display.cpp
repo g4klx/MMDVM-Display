@@ -142,7 +142,11 @@ int main(int argc, char** argv)
 CMMDVMDisplay::CMMDVMDisplay(const std::string& confFile) :
 m_conf(confFile),
 m_display(nullptr),
-m_msp(nullptr)
+m_msp(nullptr),
+m_hostConfName(),
+m_mqttInfoName(),
+m_temperatureInF(false),
+m_confTimer(1000U, 60U)
 {
 }
 
@@ -219,12 +223,18 @@ int CMMDVMDisplay::run()
 #endif
 	::LogInitialise(m_conf.getLogDisplayLevel(), m_conf.getLogMQTTLevel());
 
-	const std::string displayName = m_conf.getMMDVMName() + "/display-out";
-	const std::string jsonName    = m_conf.getMMDVMName() + "/json";
+	m_mqttInfoName   = m_conf.getMQTTInfoName();
+	m_hostConfName   = m_conf.getHostConfName();
+	m_temperatureInF = m_conf.getTemperatureInF();
+
+	const std::string displayName = m_conf.getMQTTHostName() + "/display-out";
+	const std::string hostName    = m_conf.getMQTTHostName() + "/json";
+	const std::string infoName    = m_conf.getMQTTInfoName() + "/json";
 
 	std::vector<std::pair<std::string, void (*)(const unsigned char*, unsigned int)>> subscriptions;
 	subscriptions.push_back(std::make_pair(displayName, CMMDVMDisplay::onDisplay));
-	subscriptions.push_back(std::make_pair(jsonName,    CMMDVMDisplay::onJSON));
+	subscriptions.push_back(std::make_pair(hostName,    CMMDVMDisplay::onHost));
+	subscriptions.push_back(std::make_pair(infoName,    CMMDVMDisplay::onInfo));
 
 	m_mqtt = new CMQTTConnection(m_conf.getMQTTAddress(), m_conf.getMQTTPort(), m_conf.getMQTTName(), m_conf.getMQTTAuthEnabled(), m_conf.getMQTTUsername(), m_conf.getMQTTPassword(), subscriptions, m_conf.getMQTTKeepalive());
 	ret = m_mqtt->open();
@@ -259,6 +269,9 @@ int CMMDVMDisplay::run()
 	CStopWatch stopWatch;
 	stopWatch.start();
 
+	m_confTimer.start();
+	pollHostConfig();
+
 	while (!m_killed) {
 		unsigned int ms = stopWatch.elapsed();
 		stopWatch.start();
@@ -270,6 +283,12 @@ int CMMDVMDisplay::run()
 		// collisions and a connect/disconnect loop.
 		if (m_mqtt != nullptr)
 			m_mqtt->loop();
+
+		m_confTimer.clock(ms);
+		if (m_confTimer.isRunning() && m_confTimer.hasExpired()) {
+			pollHostConfig();
+			m_confTimer.start();
+		}
 
 		if (ms < 10U)
 			CThread::sleep(10U);
@@ -302,7 +321,7 @@ bool CMMDVMDisplay::createDisplay()
 
 		ISerialPort* serial = nullptr;
 		if (port == "modem")
-			serial = m_msp = new CModemSerialPort(m_conf.getMMDVMName());
+			serial = m_msp = new CModemSerialPort(m_conf.getMQTTHostName());
 		else
 			serial = new CUARTController(port, 115200U);
 
@@ -343,7 +362,7 @@ bool CMMDVMDisplay::createDisplay()
 		}
 
 		if (port == "modem") {
-			ISerialPort* serial = m_msp = new CModemSerialPort(m_conf.getMMDVMName());
+			ISerialPort* serial = m_msp = new CModemSerialPort(m_conf.getMQTTHostName());
 			m_display = new CNextion(m_conf.getCallsign(), m_conf.getId(), m_conf.getDuplex(), serial, brightness, displayClock, utc, idleBrightness, screenLayout, displayTempInF);
 		} else {
 			unsigned int baudrate = 9600U;
@@ -460,9 +479,9 @@ void CMMDVMDisplay::readDisplay(const unsigned char* data, unsigned int length)
 		m_msp->readData(data, length);
 }
 
-void CMMDVMDisplay::readJSON(const std::string& text)
+void CMMDVMDisplay::readHost(const std::string& text)
 {
-	LogDebug("Incoming JSON - \"%s\"", text.c_str());
+	LogDebug("Incoming Host JSON - \"%s\"", text.c_str());
 
 	try {
 		nlohmann::json j = nlohmann::json::parse(text);
@@ -530,6 +549,42 @@ void CMMDVMDisplay::readJSON(const std::string& text)
 		if (j.contains("FM") && j["FM"].is_object()) {
 			LogDebug("Identified as an FM message");
 			parseFM(j["FM"]);
+			return;
+		}
+	}
+	catch (nlohmann::json::exception& ex) {
+		LogError("Error parsing: \"%s\" - %s", text.c_str(), ex.what());
+	}
+}
+
+void CMMDVMDisplay::readInfo(const std::string& text)
+{
+	LogDebug("Incoming Info JSON - \"%s\"", text.c_str());
+
+	try {
+		nlohmann::json j = nlohmann::json::parse(text);
+
+		if (j.contains("CPU") && j["CPU"].is_object()) {
+			LogDebug("Identified as a CPU message");
+			parseCPU(j["CPU"]);
+			return;
+		}
+
+		if (j.contains("Programs") && j["Programs"].is_object()) {
+			LogDebug("Identified as a Programs message");
+			parsePrograms(j["Programs"]);
+			return;
+		}
+
+		if (j.contains("Addresses") && j["Addresses"].is_object()) {
+			LogDebug("Identified as an Addresses message");
+			parseAddresses(j["Addresses"]);
+			return;
+		}
+
+		if (j.contains(m_hostConfName) && j[m_hostConfName].is_object()) {
+			LogDebug("Identified as an MMDVM-Host Config message");
+			parseHostConfig(j[m_hostConfName]);
 			return;
 		}
 	}
@@ -862,6 +917,126 @@ void CMMDVMDisplay::parseFM(const nlohmann::json& json)
 	}
 }
 
+void CMMDVMDisplay::parseCPU(const nlohmann::json& json)
+{
+	assert(m_display != nullptr);
+
+	try {
+		std::string tempString = "?";
+		std::string freqString = "?";
+		std::string loadString = "?";
+		std::string cpuString  = "0";
+
+		if (json.contains("temperature")) {
+			char buffer[10U];
+			float temperature = json["temperature"];
+
+			if (m_temperatureInF) {
+				temperature = (temperature * 1.8F) + 32.0F;
+				::sprintf(buffer, "%2.2f %cF", temperature, 176);
+			} else {
+				::sprintf(buffer, "%2.2f %cC", temperature, 176);
+			}
+
+			tempString = buffer;
+		}
+
+		if (json.contains("frequency")) {
+			float frequency = json["frequency"];
+
+			char buffer[10U];
+			::sprintf(buffer, "%0.0f MHz", frequency);
+			freqString = buffer;
+		}
+
+		if (json.contains("load")) {
+			float load = json["load"];
+
+			char buffer[10U];
+			::sprintf(buffer, "%0.2f", load);
+			loadString = buffer;
+
+			::sprintf(buffer, "%.0f", load * 100.0F);
+			cpuString = buffer;
+		}
+
+		m_display->writeCPU(tempString, freqString, loadString, cpuString);
+	}
+	catch (nlohmann::json::exception& ex) {
+		LogError("Error parsing CPU - %s", ex.what());
+	}
+}
+
+void CMMDVMDisplay::parsePrograms(const nlohmann::json& json)
+{
+	assert(m_display != nullptr);
+}
+
+void CMMDVMDisplay::parseAddresses(const nlohmann::json& json)
+{
+	assert(m_display != nullptr);
+}
+
+void CMMDVMDisplay::parseHostConfig(const nlohmann::json& json)
+{
+	assert(m_display != nullptr);
+
+	try {
+		std::string rxFrequency = "?";
+		std::string txFrequency = "?";
+		std::string location    = "?";
+
+		if (json.contains("Info") && json["Info"].is_object()) {
+			const nlohmann::json j = json["Info"];
+
+			if (j.contains("RXFrequency")) {
+				// Frequency is in Hz
+				std::string freq = j["RXFrequency"];
+				float freqHz = std::stof(freq);
+
+				// Convert to MHz
+				char buffer[20U];
+				::sprintf(buffer, "%3.6f", freqHz / 1000000.0F);
+
+				rxFrequency = buffer;
+			}
+
+			if (j.contains("TXFrequency")) {
+				// Frequency is in Hz
+				std::string freq = j["TXFrequency"];
+				float freqHz = std::stof(freq);
+
+				// Convert to MHz
+				char buffer[20U];
+				::sprintf(buffer, "%3.6f", freqHz / 1000000.0F);
+
+				txFrequency = buffer;
+			}
+
+			if (j.contains("Location")) {
+				std::string loc = j["Location"];
+				location = loc;
+			}
+
+			m_display->writeInfo(rxFrequency, txFrequency, location);
+
+			// Stop polling the Host ini file data
+			m_confTimer.stop();
+		}
+	}
+	catch (nlohmann::json::exception& ex) {
+		LogError("Error parsing CPU - %s", ex.what());
+	}
+}
+
+void CMMDVMDisplay::pollHostConfig()
+{
+	std::string   topic = m_mqttInfoName + "/command";
+	std::string command = "Config " + m_hostConfName;
+
+	m_mqtt->publish(topic, command);
+}
+
 void CMMDVMDisplay::onDisplay(const unsigned char* data, unsigned int length)
 {
 	assert(data != nullptr);
@@ -871,11 +1046,20 @@ void CMMDVMDisplay::onDisplay(const unsigned char* data, unsigned int length)
 	driver->readDisplay(data, length);
 }
 
-void CMMDVMDisplay::onJSON(const unsigned char* data, unsigned int length)
+void CMMDVMDisplay::onHost(const unsigned char* data, unsigned int length)
 {
 	assert(data != nullptr);
 	assert(length > 0U);
 	assert(driver != nullptr);
 
-	driver->readJSON(std::string((char*)data, length));
+	driver->readHost(std::string((char*)data, length));
+}
+
+void CMMDVMDisplay::onInfo(const unsigned char* data, unsigned int length)
+{
+	assert(data != nullptr);
+	assert(length > 0U);
+	assert(driver != nullptr);
+
+	driver->readInfo(std::string((char*)data, length));
 }
