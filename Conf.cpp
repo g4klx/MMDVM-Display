@@ -77,7 +77,6 @@ m_nextionDisplayClock(false),
 m_nextionUTC(false),
 m_nextionIdleBrightness(20U),
 m_nextionScreenLayout(0U),
-m_nextionTempInFahrenheit(false),
 m_oledType(3U),
 m_oledBrightness(0U),
 m_oledInvert(false),
@@ -249,8 +248,6 @@ bool CConf::read()
 				m_nextionIdleBrightness = (unsigned int)::atoi(value);
 			else if (::strcmp(key, "ScreenLayout") == 0)
 				m_nextionScreenLayout = (unsigned int)::strtoul(value, nullptr, 0);
-			else if (::strcmp(key, "DisplayTempInFahrenheit") == 0)
-				m_nextionTempInFahrenheit = ::atoi(value) == 1;
 		} else if (section == SECTION::OLED) {
 			if (::strcmp(key, "Type") == 0)
 				m_oledType = (unsigned char)::atoi(value);
@@ -529,9 +526,3 @@ bool CConf::getLCDprocDimOnIdle() const
 {
 	return m_lcdprocDimOnIdle;
 }
-
-bool CConf::getNextionTempInFahrenheit() const
-{
-	return m_nextionTempInFahrenheit;
-}
-

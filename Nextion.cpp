@@ -45,6 +45,12 @@ m_callsign(callsign),
 m_id(id),
 m_duplex(duplex),
 m_ipAddress("(ip unknown)"),
+m_temperature(-1.0F),
+m_frequency(-1.0F),
+m_load(-1.0F),
+m_rxFrequency(-1.0F),
+m_txFrequency(-1.0F),
+m_location("?"),
 m_serial(serial),
 m_brightness(brightness),
 m_mode(MODE_IDLE),
@@ -137,28 +143,58 @@ void CNextion::setIdleInt()
 		sendCommandAction(17U);
 
 		// CPU temperature
-		FILE* fp = ::fopen("/sys/class/thermal/thermal_zone0/temp", "rt");
-		if (fp != nullptr) {
-			double val = 0.0;
-			int n = ::fscanf(fp, "%lf", &val);
-			::fclose(fp);
+		if (m_temperature != -1.0F) {
+			float val = m_temperature / 1000.0F;
 
-			if (n == 1) {
-				val /= 1000.0;
-				if (m_displayTempInF) {
-					val = (1.8 * val) + 32.0;
-					::sprintf(command, "t20.txt=\"%2.1f %cF\"", val, 176);
-				} else {	
-					::sprintf(command, "t20.txt=\"%2.1f %cC\"", val, 176);
-				}
-				sendCommand(command);
-				sendCommandAction(22U);
+			if (m_displayTempInF) {
+				val = (1.8 * val) + 32.0;
+				::sprintf(command, "t20.txt=\"%2.1f %cF\"", val, 176);
+			} else {	
+				::sprintf(command, "t20.txt=\"%2.1f %cC\"", val, 176);
 			}
+
+			sendCommand(command);
+			sendCommandAction(22U);
 		}
 	} else {
+		sendCommand("t20.txt=\"?\"");
 		sendCommandAction(17U);
 	}
 	
+	if (m_frequency != -1.0F) {
+		::sprintf(command, "t21.txt=\"%0.0f MHz\"", m_frequency / 1000.0F);
+		sendCommand(command);
+	} else {
+		sendCommand("t21.txt=\"?\"");
+	}
+
+	if (m_load != -1.0F) {
+		::sprintf(command, "t22.txt=\"%0.2f\"", m_load);
+		sendCommand(command);
+
+		::sprintf(command, "cpuload.val=%.0f", m_load * 100.0F);
+		sendCommand(command);
+	} else {
+		sendCommand("t22.txt=\"?\"");
+		sendCommand("cpuload.val=0");
+	}
+
+	if (m_rxFrequency != -1.0F) {
+		::sprintf(command, "t30.txt=\"%.0f MHz\"", m_rxFrequency / 1000000.0F);
+		sendCommand(command);
+	} else {
+		sendCommand("t30.txt=\"?\"");
+	}
+
+	if (m_txFrequency != -1.0F) {
+		::sprintf(command, "t31.txt=\"%.0f MHz\"", m_txFrequency / 1000000.0F);
+		sendCommand(command);
+	} else {
+		sendCommand("t31.txt=\"?\"");
+	}
+
+	sendCommand("t32.txt=\"" + m_location + "\"");
+
 	sendCommand("t1.txt=\"MMDVM IDLE\"");
 	sendCommandAction(11U);
 
@@ -726,6 +762,20 @@ void CNextion::clearCWInt()
 {
 	sendCommand("t1.txt=\"MMDVM IDLE\"");
 	sendCommandAction(11U);
+}
+
+void CNextion::writeCPUInt(float temperature, float frequency, float load)
+{
+	m_temperature = temperature;
+	m_frequency   = frequency;
+	m_load        = load;
+}
+
+void CNextion::writeInfoInt(float rxFrequency, float txFrequency, const std::string& location)
+{
+	m_rxFrequency = rxFrequency;
+	m_txFrequency = txFrequency;
+	m_location    = location;
 }
 
 void CNextion::clockInt(unsigned int ms)

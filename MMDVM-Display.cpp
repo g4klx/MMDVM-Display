@@ -333,7 +333,7 @@ bool CMMDVMDisplay::createDisplay()
 		bool utc                    = m_conf.getNextionUTC();
 		unsigned int idleBrightness = m_conf.getNextionIdleBrightness();
 		unsigned int screenLayout   = m_conf.getNextionScreenLayout();
-		bool displayTempInF         = m_conf.getNextionTempInFahrenheit();
+		bool tempInF                = m_conf.getTemperatureInF();
 
 		LogInfo("    Port: %s", port.c_str());
 		LogInfo("    Brightness: %u", brightness);
@@ -341,7 +341,7 @@ bool CMMDVMDisplay::createDisplay()
 		if (displayClock)
 			LogInfo("    Display UTC: %s", utc ? "yes" : "no");
 		LogInfo("    Idle Brightness: %u", idleBrightness);
-		LogInfo("    Temperature in Fahrenheit: %s ", displayTempInF ? "yes" : "no");
+		LogInfo("    Temperature in Fahrenheit: %s ", tempInF ? "yes" : "no");
  
 		switch (screenLayout) {
 		case 0U:
@@ -363,7 +363,7 @@ bool CMMDVMDisplay::createDisplay()
 
 		if (port == "modem") {
 			ISerialPort* serial = m_msp = new CModemSerialPort(m_conf.getMQTTHostName());
-			m_display = new CNextion(m_conf.getCallsign(), m_conf.getId(), m_conf.getDuplex(), serial, brightness, displayClock, utc, idleBrightness, screenLayout, displayTempInF);
+			m_display = new CNextion(m_conf.getCallsign(), m_conf.getId(), m_conf.getDuplex(), serial, brightness, displayClock, utc, idleBrightness, screenLayout, tempInF);
 		} else {
 			unsigned int baudrate = 9600U;
 			if (screenLayout == 4U)
@@ -371,7 +371,7 @@ bool CMMDVMDisplay::createDisplay()
 
 			LogInfo("    Display baudrate: %u ", baudrate);
 			ISerialPort* serial = new CUARTController(port, baudrate);
-			m_display = new CNextion(m_conf.getCallsign(), m_conf.getId(), m_conf.getDuplex(), serial, brightness, displayClock, utc, idleBrightness, screenLayout, displayTempInF);
+			m_display = new CNextion(m_conf.getCallsign(), m_conf.getId(), m_conf.getDuplex(), serial, brightness, displayClock, utc, idleBrightness, screenLayout, tempInF);
 		}
 	} else if (type == "LCDproc") {
 		std::string address       = m_conf.getLCDprocAddress();
@@ -922,45 +922,20 @@ void CMMDVMDisplay::parseCPU(const nlohmann::json& json)
 	assert(m_display != nullptr);
 
 	try {
-		std::string tempString = "?";
-		std::string freqString = "?";
-		std::string loadString = "?";
-		std::string cpuString  = "0";
+		float temperature = -1.0F;
+		float frequency   = -1.0F;
+		float load        = -1.0F;
 
-		if (json.contains("temperature")) {
-			char buffer[10U];
-			float temperature = json["temperature"];
+		if (json.contains("temperature"))
+			temperature = json["temperature"];
 
-			if (m_temperatureInF) {
-				temperature = (temperature * 1.8F) + 32.0F;
-				::sprintf(buffer, "%2.2f %cF", temperature, 176);
-			} else {
-				::sprintf(buffer, "%2.2f %cC", temperature, 176);
-			}
+		if (json.contains("frequency"))
+			frequency = json["frequency"];
 
-			tempString = buffer;
-		}
+		if (json.contains("load"))
+			load = json["load"];
 
-		if (json.contains("frequency")) {
-			float frequency = json["frequency"];
-
-			char buffer[10U];
-			::sprintf(buffer, "%0.0f MHz", frequency);
-			freqString = buffer;
-		}
-
-		if (json.contains("load")) {
-			float load = json["load"];
-
-			char buffer[10U];
-			::sprintf(buffer, "%0.2f", load);
-			loadString = buffer;
-
-			::sprintf(buffer, "%.0f", load * 100.0F);
-			cpuString = buffer;
-		}
-
-		m_display->writeCPU(tempString, freqString, loadString, cpuString);
+		m_display->writeCPU(temperature, frequency, load);
 	}
 	catch (nlohmann::json::exception& ex) {
 		LogError("Error parsing CPU - %s", ex.what());
@@ -982,9 +957,9 @@ void CMMDVMDisplay::parseHostConfig(const nlohmann::json& json)
 	assert(m_display != nullptr);
 
 	try {
-		std::string rxFrequency = "?";
-		std::string txFrequency = "?";
-		std::string location    = "?";
+		float rxFrequency    = -1.0F;
+		float txFrequency    = -1.0F;
+		std::string location = "?";
 
 		if (json.contains("Info") && json["Info"].is_object()) {
 			const nlohmann::json j = json["Info"];
@@ -992,25 +967,13 @@ void CMMDVMDisplay::parseHostConfig(const nlohmann::json& json)
 			if (j.contains("RXFrequency")) {
 				// Frequency is in Hz
 				std::string freq = j["RXFrequency"];
-				float freqHz = std::stof(freq);
-
-				// Convert to MHz
-				char buffer[20U];
-				::sprintf(buffer, "%3.6f", freqHz / 1000000.0F);
-
-				rxFrequency = buffer;
+				rxFrequency = std::stof(freq);
 			}
 
 			if (j.contains("TXFrequency")) {
 				// Frequency is in Hz
 				std::string freq = j["TXFrequency"];
-				float freqHz = std::stof(freq);
-
-				// Convert to MHz
-				char buffer[20U];
-				::sprintf(buffer, "%3.6f", freqHz / 1000000.0F);
-
-				txFrequency = buffer;
+				txFrequency = std::stof(freq);
 			}
 
 			if (j.contains("Location")) {

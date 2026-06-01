@@ -76,8 +76,8 @@ public:
 
 	void writeCW();
 
-	void writeCPU(const std::string& temp, const std::string& freq, const std::string& load, const std::string& cpu);
-	void writeInfo(const std::string& rxFrequency, const std::string& txFrequency, const std::string& location);
+	void writeCPU(float temperature, float frequency, float load);
+	void writeInfo(float rxFrequency, float txFrequency, const std::string& location);
 
 	virtual void close() = 0;
 
@@ -125,6 +125,9 @@ protected:
 
 	virtual void writeCWInt() = 0;
 	virtual void clearCWInt() = 0;
+
+	virtual void writeCPUInt(float temperature, float frequency, float load);
+	virtual void writeInfoInt(float rxFrequency, float txFrequency, const std::string& location);
 
 	virtual void clockInt(unsigned int ms);
 

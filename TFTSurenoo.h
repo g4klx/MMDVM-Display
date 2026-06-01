@@ -32,41 +32,41 @@ public:
 	CTFTSurenoo(const std::string& callsign, unsigned int id, bool duplex, ISerialPort* serial, unsigned int brightness, unsigned int screenLayout);
 	virtual ~CTFTSurenoo();
 
-	virtual bool open();
+	virtual bool open() override;
 
-	virtual void close();
+	virtual void close() override;
 
 protected:
-	virtual void setIdleInt();
-	virtual void setErrorInt();
-	virtual void setLockoutInt();
-	virtual void setQuitInt();
+	virtual void setIdleInt() override;
+	virtual void setErrorInt() override;
+	virtual void setLockoutInt() override;
+	virtual void setQuitInt() override;
 
-	virtual void writeDStarInt(const std::string& my1, const std::string& my2, const std::string& your, const std::string& type, const std::string& reflector);
-	virtual void clearDStarInt();
+	virtual void writeDStarInt(const std::string& my1, const std::string& my2, const std::string& your, const std::string& type, const std::string& reflector) override;
+	virtual void clearDStarInt() override;
 
-	virtual void writeDMRInt(unsigned int slotNo, const std::string& src, bool group, unsigned int dst, const std::string& type);
-	virtual void clearDMRInt(unsigned int slotNo);
+	virtual void writeDMRInt(unsigned int slotNo, const std::string& src, bool group, unsigned int dst, const std::string& type) override;
+	virtual void clearDMRInt(unsigned int slotNo) override;
 
-	virtual void writeFusionInt(const std::string& source, const std::string& dest, unsigned char dgid, const std::string& type, const std::string& origin);
-	virtual void clearFusionInt();
+	virtual void writeFusionInt(const std::string& source, const std::string& dest, unsigned char dgid, const std::string& type, const std::string& origin) override;
+	virtual void clearFusionInt() override;
 
-	virtual void writeP25Int(const std::string& source, bool group, unsigned int dest, const std::string& type);
-	virtual void clearP25Int();
+	virtual void writeP25Int(const std::string& source, bool group, unsigned int dest, const std::string& type) override;
+	virtual void clearP25Int() override;
 
-	virtual void writeNXDNInt(const std::string& source, bool group, unsigned int dest, const std::string& type);
-	virtual void clearNXDNInt();
+	virtual void writeNXDNInt(const std::string& source, bool group, unsigned int dest, const std::string& type) override;
+	virtual void clearNXDNInt() override;
 
-	virtual void writePOCSAGInt(uint32_t ric, const std::string& message);
-	virtual void clearPOCSAGInt();
+	virtual void writePOCSAGInt(uint32_t ric, const std::string& message) override;
+	virtual void clearPOCSAGInt() override;
 
-	virtual void writeFMInt(const std::string& state);
-	virtual void clearFMInt();
+	virtual void writeFMInt(const std::string& state) override;
+	virtual void clearFMInt() override;
 
-	virtual void writeCWInt();
-	virtual void clearCWInt();
+	virtual void writeCWInt() override;
+	virtual void clearCWInt() override;
 
-	virtual void clockInt(unsigned int ms);
+	virtual void clockInt(unsigned int ms) override;
 
 private:
 	std::string   m_callsign;

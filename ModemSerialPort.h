@@ -1,5 +1,5 @@
 /*
-*   Copyright (C) 2016,2020,2021,2023 by Jonathan Naylor G4KLX
+*   Copyright (C) 2016,2020,2021,2023,2026 by Jonathan Naylor G4KLX
 *
 *   This program is free software; you can redistribute it and/or modify
 *   it under the terms of the GNU General Public License as published by
@@ -29,13 +29,13 @@ public:
 	CModemSerialPort(const std::string& mmdvmName);
 	virtual ~CModemSerialPort();
 
-	virtual bool open();
+	virtual bool open() override;
 
-	virtual int read(unsigned char* buffer, unsigned int length);
+	virtual int read(unsigned char* buffer, unsigned int length) override;
 
-	virtual int write(const unsigned char* buffer, unsigned int length);
+	virtual int write(const unsigned char* buffer, unsigned int length) override;
 
-	virtual void close();
+	virtual void close() override;
 
 	void readData(const unsigned char* data, unsigned int length);
 

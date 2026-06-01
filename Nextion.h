@@ -34,60 +34,69 @@ public:
 	CNextion(const std::string& callsign, unsigned int id, bool duplex, ISerialPort* serial, unsigned int brightness, bool displayClock, bool utc, unsigned int idleBrightness, unsigned int screenLayout, bool displayTempInF);
 	virtual ~CNextion();
 
-	virtual bool open();
+	virtual bool open() override;
 
-	virtual void close();
+	virtual void close() override;
 
 protected:
-	virtual void setIdleInt();
-	virtual void setErrorInt();
-	virtual void setLockoutInt();
-	virtual void setQuitInt();
+	virtual void setIdleInt() override;
+	virtual void setErrorInt() override;
+	virtual void setLockoutInt() override;
+	virtual void setQuitInt() override;
 
-	virtual void writeDStarInt(const std::string& my1, const std::string& my2, const std::string& your, const std::string& type, const std::string& reflector);
-	virtual void writeDStarRSSIInt(int rssi);
-	virtual void writeDStarBERInt(float ber);
-	virtual void writeDStarTextInt(const std::string& text);
-	virtual void clearDStarInt();
+	virtual void writeDStarInt(const std::string& my1, const std::string& my2, const std::string& your, const std::string& type, const std::string& reflector) override;
+	virtual void writeDStarRSSIInt(int rssi) override;
+	virtual void writeDStarBERInt(float ber) override;
+	virtual void writeDStarTextInt(const std::string& text) override;
+	virtual void clearDStarInt() override;
 
-	virtual void writeDMRInt(unsigned int slotNo, const std::string& src, bool group, unsigned int dst, const std::string& type);
-	virtual void writeDMRRSSIInt(unsigned int slotNo, int rssi);
-	virtual void writeDMRTAInt(unsigned int slotNo, const std::string& talkerAlias);
-	virtual void writeDMRBERInt(unsigned int slotNo, float ber);
-	virtual void clearDMRInt(unsigned int slotNo);
+	virtual void writeDMRInt(unsigned int slotNo, const std::string& src, bool group, unsigned int dst, const std::string& type) override;
+	virtual void writeDMRRSSIInt(unsigned int slotNo, int rssi) override;
+	virtual void writeDMRTAInt(unsigned int slotNo, const std::string& talkerAlias) override;
+	virtual void writeDMRBERInt(unsigned int slotNo, float ber) override;
+	virtual void clearDMRInt(unsigned int slotNo) override;
 
-	virtual void writeFusionInt(const std::string& source, const std::string& dest, unsigned char dgid, const std::string& type, const std::string& origin);
-	virtual void writeFusionRSSIInt(int rssi);
-	virtual void writeFusionBERInt(float ber);
-	virtual void clearFusionInt();
+	virtual void writeFusionInt(const std::string& source, const std::string& dest, unsigned char dgid, const std::string& type, const std::string& origin) override;
+	virtual void writeFusionRSSIInt(int rssi) override;
+	virtual void writeFusionBERInt(float ber) override;
+	virtual void clearFusionInt() override;
 
-	virtual void writeP25Int(const std::string& source, bool group, unsigned int dest, const std::string& type);
-	virtual void writeP25RSSIInt(int rssi);
-	virtual void writeP25BERInt(float ber);
-	virtual void clearP25Int();
+	virtual void writeP25Int(const std::string& source, bool group, unsigned int dest, const std::string& type) override;
+	virtual void writeP25RSSIInt(int rssi) override;
+	virtual void writeP25BERInt(float ber) override;
+	virtual void clearP25Int() override;
 
-	virtual void writeNXDNInt(const std::string& source, bool group, unsigned int dest, const std::string& type);
-	virtual void writeNXDNRSSIInt(int rssi);
-	virtual void writeNXDNBERInt(float ber);
-	virtual void clearNXDNInt();
+	virtual void writeNXDNInt(const std::string& source, bool group, unsigned int dest, const std::string& type) override;
+	virtual void writeNXDNRSSIInt(int rssi) override;
+	virtual void writeNXDNBERInt(float ber) override;
+	virtual void clearNXDNInt() override;
 
-	virtual void writePOCSAGInt(uint32_t ric, const std::string& message);
-	virtual void clearPOCSAGInt();
+	virtual void writePOCSAGInt(uint32_t ric, const std::string& message) override;
+	virtual void clearPOCSAGInt() override;
 
-	virtual void writeFMInt(const std::string& state);
-	virtual void writeFMRSSIInt(int rssi);
-	virtual void clearFMInt();
+	virtual void writeFMInt(const std::string& state) override;
+	virtual void writeFMRSSIInt(int rssi) override;
+	virtual void clearFMInt() override;
 
-	virtual void writeCWInt();
-	virtual void clearCWInt();
+	virtual void writeCWInt() override;
+	virtual void clearCWInt() override;
 
-	virtual void clockInt(unsigned int ms);
+	virtual void writeCPUInt(float temperature, float frequency, float load) override;
+	virtual void writeInfoInt(float rxFrequency, float txFrequency, const std::string& location) override;
+
+	virtual void clockInt(unsigned int ms) override;
 
 private:
 	std::string    m_callsign;
 	unsigned int   m_id;
 	bool           m_duplex;
 	std::string    m_ipAddress;
+	float          m_temperature;
+	float          m_frequency;
+	float          m_load;
+	float          m_rxFrequency;
+	float          m_txFrequency;
+	std::string    m_location;
 	ISerialPort*   m_serial;
 	unsigned int   m_brightness;
 	unsigned char  m_mode;

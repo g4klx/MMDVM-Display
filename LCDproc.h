@@ -37,47 +37,47 @@ public:
 	CLCDproc(const std::string& callsign,unsigned int id, bool duplex, const std::string& address, unsigned int port, unsigned short localPort, bool displayClock, bool utc, bool dimOnIdle);
 	virtual ~CLCDproc();
 
-	virtual bool open();
+	virtual bool open() override;
 
-	virtual void close();
+	virtual void close() override;
 
 protected:
-	virtual void setIdleInt();
-	virtual void setErrorInt();
-	virtual void setLockoutInt();
-	virtual void setQuitInt();
+	virtual void setIdleInt() override;
+	virtual void setErrorInt() override;
+	virtual void setLockoutInt() override;
+	virtual void setQuitInt() override;
   
-	virtual void writeDStarInt(const std::string& my1, const std::string& my2, const std::string& your, const std::string& type, const std::string& reflector);
-	virtual void writeDStarRSSIInt(int rssi);
-	virtual void clearDStarInt();
+	virtual void writeDStarInt(const std::string& my1, const std::string& my2, const std::string& your, const std::string& type, const std::string& reflector) override;
+	virtual void writeDStarRSSIInt(int rssi) override;
+	virtual void clearDStarInt() override;
 
-	virtual void writeDMRInt(unsigned int slotNo, const std::string& src, bool group, unsigned int dst, const std::string& type);
-	virtual void writeDMRRSSIInt(unsigned int slotNo, int rssi); 
-	virtual void clearDMRInt(unsigned int slotNo);
+	virtual void writeDMRInt(unsigned int slotNo, const std::string& src, bool group, unsigned int dst, const std::string& type) override;
+	virtual void writeDMRRSSIInt(unsigned int slotNo, int rssi) override; 
+	virtual void clearDMRInt(unsigned int slotNo) override;
 
-	virtual void writeFusionInt(const std::string& source, const std::string& dest, unsigned char dgid, const std::string& type, const std::string& origin);
-	virtual void writeFusionRSSIInt(int rssi); 
-	virtual void clearFusionInt();
+	virtual void writeFusionInt(const std::string& source, const std::string& dest, unsigned char dgid, const std::string& type, const std::string& origin) override;
+	virtual void writeFusionRSSIInt(int rssi) override; 
+	virtual void clearFusionInt() override;
 
-	virtual void writeP25Int(const std::string& source, bool group, unsigned int dest, const std::string& type);
-	virtual void writeP25RSSIInt(int rssi); 
-	virtual void clearP25Int();
+	virtual void writeP25Int(const std::string& source, bool group, unsigned int dest, const std::string& type) override;
+	virtual void writeP25RSSIInt(int rssi) override; 
+	virtual void clearP25Int() override;
 
-	virtual void writeNXDNInt(const std::string& source, bool group, unsigned int dest, const std::string& type);
-	virtual void writeNXDNRSSIInt(int rssi);
-	virtual void clearNXDNInt();
+	virtual void writeNXDNInt(const std::string& source, bool group, unsigned int dest, const std::string& type) override;
+	virtual void writeNXDNRSSIInt(int rssi) override;
+	virtual void clearNXDNInt() override;
 
-	virtual void writeFMInt(const std::string& state);
-	virtual void writeFMRSSIInt(int rssi);
-	virtual void clearFMInt();
+	virtual void writeFMInt(const std::string& state) override;
+	virtual void writeFMRSSIInt(int rssi) override;
+	virtual void clearFMInt() override;
 
-	virtual void writePOCSAGInt(uint32_t ric, const std::string& message);
-	virtual void clearPOCSAGInt();
+	virtual void writePOCSAGInt(uint32_t ric, const std::string& message) override;
+	virtual void clearPOCSAGInt() override;
 
-	virtual void writeCWInt();
-	virtual void clearCWInt();
+	virtual void writeCWInt() override;
+	virtual void clearCWInt() override;
 
-	virtual void clockInt(unsigned int ms);
+	virtual void clockInt(unsigned int ms) override;
 
 private:
 	std::string  m_callsign;

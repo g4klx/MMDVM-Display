@@ -307,12 +307,14 @@ void CDisplay::writeCW()
 	writeCWInt();
 }
 
-void CDisplay::writeCPU(const std::string& temp, const std::string& freq, const std::string& load, const std::string& cpu)
+void CDisplay::writeCPU(float temperature, float frequency, float load)
 {
+	writeCPUInt(temperature, frequency, load);
 }
 
-void CDisplay::writeInfo(const std::string& rxFrequency, const std::string& txFrequency, const std::string& location)
+void CDisplay::writeInfo(float rxFrequency, float txFrequency, const std::string& location)
 {
+	writeInfoInt(rxFrequency, txFrequency, location);
 }
 
 void CDisplay::clock(unsigned int ms)
@@ -431,5 +433,13 @@ void CDisplay::writeNXDNBERInt(float ber)
 }
 
 void CDisplay::writeFMRSSIInt(int rssi)
+{
+}
+
+void CDisplay::writeCPUInt(float temperature, float frequency, float load)
+{
+}
+
+void CDisplay::writeInfoInt(float rxFrequency, float txFrequency, const std::string& location)
 {
 }
