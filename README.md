@@ -1,7 +1,7 @@
-This program allows displays to be used with MQTT equipped versions of the MMDVM-Host. It takes
-the structured information, in JSON format, provided by the host and converts it for use by
-displays. It currently supports the display types that were in the MMDVM-Host, but making this
-handling external and simpler should allow for easier modifications and the addition of new display
+This program allows displays to be used with MQTT equipped versions of the MMDVM. It takes
+the structured information, in JSON format, provided by the Host and Info programs, and converts it for use by
+displays. It currently supports the display types that were in the MMDVM-Host, but making the display
+handling external and simpler should allow for easier modifications and addition of new display
 types.
 
 Environmental information that is not supplied by the Host is obtained via JSON created by the MMDVM-Info
