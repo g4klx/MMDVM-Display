@@ -16,7 +16,6 @@
  *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
-#include "NetworkInfo.h"
 #include "Nextion.h"
 #include "Utils.h"
 #include "Log.h"
@@ -44,7 +43,8 @@ CDisplay(),
 m_callsign(callsign),
 m_id(id),
 m_duplex(duplex),
-m_ipAddress("(ip unknown)"),
+m_ipV4(),
+m_ipV6(),
 m_temperature(-1.0F),
 m_frequency(-1.0F),
 m_load(-1.0F),
@@ -96,20 +96,12 @@ CNextion::~CNextion()
 
 bool CNextion::open()
 {
-	unsigned char info[100U];
-	CNetworkInfo* m_network;
-
 	bool ret = m_serial->open();
 	if (!ret) {
 		LogError("Cannot open the port for the Nextion display");
 		delete m_serial;
 		return false;
 	}
-
-	info[0] = 0;
-	m_network = new CNetworkInfo;
-	m_network->getNetworkInterface(info);
-	m_ipAddress = (char*)info;
 
 	sendCommand("bkcmd=3");
 	sendCommandAction(0U);
@@ -147,7 +139,7 @@ void CNextion::setIdleInt()
 			float val = m_temperature / 1000.0F;
 
 			if (m_displayTempInF) {
-				val = (1.8 * val) + 32.0;
+				val = (1.8F * val) + 32.0F;
 				::sprintf(command, "t20.txt=\"%2.1f %cF\"", val, 176);
 			} else {	
 				::sprintf(command, "t20.txt=\"%2.1f %cC\"", val, 176);
@@ -198,7 +190,12 @@ void CNextion::setIdleInt()
 	sendCommand("t1.txt=\"MMDVM IDLE\"");
 	sendCommandAction(11U);
 
-	::sprintf(command, "t3.txt=\"%s\"", m_ipAddress.c_str());
+	if (!m_ipV4.empty())
+		::sprintf(command, "t3.txt=\"%s\"", m_ipV4.c_str());
+	else if (!m_ipV6.empty())
+		::sprintf(command, "t3.txt=\"%s\"", m_ipV6.c_str());
+	else
+		::sprintf(command, "t3.txt=\"(ip unknown)\"");
 	sendCommand(command);
 	sendCommandAction(16U);
 
@@ -256,7 +253,12 @@ void CNextion::setQuitInt()
 		sendCommand(command);
 	}
 
-	::sprintf(command, "t3.txt=\"%s\"", m_ipAddress.c_str());
+	if (!m_ipV4.empty())
+		::sprintf(command, "t3.txt=\"%s\"", m_ipV4.c_str());
+	else if (!m_ipV6.empty())
+		::sprintf(command, "t3.txt=\"%s\"", m_ipV6.c_str());
+	else
+		::sprintf(command, "t3.txt=\"(ip unknown)\"");
 	sendCommand(command);
 	sendCommandAction(16U);
 
@@ -776,6 +778,15 @@ void CNextion::writeInfoInt(float rxFrequency, float txFrequency, const std::str
 	m_rxFrequency = rxFrequency;
 	m_txFrequency = txFrequency;
 	m_location    = location;
+}
+
+void CNextion::writeIPInt(const std::string& ipV4, const std::string& ipV6)
+{
+	if (!ipV4.empty())
+		m_ipV4 = ipV4;
+
+	if (!ipV6.empty())
+		m_ipV6 = ipV6;
 }
 
 void CNextion::clockInt(unsigned int ms)

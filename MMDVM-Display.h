@@ -44,6 +44,7 @@ private:
 	std::string       m_mqttInfoName;
 	bool              m_temperatureInF;
 	CTimer            m_confTimer;
+	CTimer            m_addrTimer;
 
 	bool createDisplay();
 
@@ -71,6 +72,7 @@ private:
 	void parseHostConfig(const nlohmann::json& json);
 
 	void pollHostConfig();
+	void pollHostAddresses();
 
 	static void onDisplay(const unsigned char* data, unsigned int length);
 	static void onHost(const unsigned char* data, unsigned int length);

@@ -317,6 +317,11 @@ void CDisplay::writeInfo(float rxFrequency, float txFrequency, const std::string
 	writeInfoInt(rxFrequency, txFrequency, location);
 }
 
+void CDisplay::writeIP(const std::string& ipV4, const std::string& ipV6)
+{
+	writeIPInt(ipV4, ipV6);
+}
+
 void CDisplay::clock(unsigned int ms)
 {
 	m_timer1.clock(ms);
@@ -441,5 +446,9 @@ void CDisplay::writeCPUInt(float temperature, float frequency, float load)
 }
 
 void CDisplay::writeInfoInt(float rxFrequency, float txFrequency, const std::string& location)
+{
+}
+
+void CDisplay::writeIPInt(const std::string& ipV4, const std::string& ipV6)
 {
 }

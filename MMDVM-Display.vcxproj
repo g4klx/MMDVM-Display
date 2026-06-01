@@ -178,7 +178,6 @@
     <ClInclude Include="ModemSerialPort.h" />
     <ClInclude Include="MQTTConnection.h" />
     <ClInclude Include="Mutex.h" />
-    <ClInclude Include="NetworkInfo.h" />
     <ClInclude Include="Nextion.h" />
     <ClInclude Include="OLED.h" />
     <ClInclude Include="RingBuffer.h" />
@@ -202,7 +201,6 @@
     <ClCompile Include="ModemSerialPort.cpp" />
     <ClCompile Include="MQTTConnection.cpp" />
     <ClCompile Include="Mutex.cpp" />
-    <ClCompile Include="NetworkInfo.cpp" />
     <ClCompile Include="Nextion.cpp" />
     <ClCompile Include="OLED.cpp" />
     <ClCompile Include="SerialPort.cpp" />

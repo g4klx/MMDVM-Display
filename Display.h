@@ -78,6 +78,7 @@ public:
 
 	void writeCPU(float temperature, float frequency, float load);
 	void writeInfo(float rxFrequency, float txFrequency, const std::string& location);
+	void writeIP(const std::string& ipV4, const std::string& ipV6);
 
 	virtual void close() = 0;
 
@@ -128,6 +129,7 @@ protected:
 
 	virtual void writeCPUInt(float temperature, float frequency, float load);
 	virtual void writeInfoInt(float rxFrequency, float txFrequency, const std::string& location);
+	virtual void writeIPInt(const std::string& ipV4, const std::string& ipV6);
 
 	virtual void clockInt(unsigned int ms);
 

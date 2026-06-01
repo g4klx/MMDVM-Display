@@ -146,7 +146,8 @@ m_msp(nullptr),
 m_hostConfName(),
 m_mqttInfoName(),
 m_temperatureInF(false),
-m_confTimer(1000U, 60U)
+m_confTimer(1000U, 60U),
+m_addrTimer(1000U, 60U)
 {
 }
 
@@ -270,7 +271,10 @@ int CMMDVMDisplay::run()
 	stopWatch.start();
 
 	m_confTimer.start();
+	m_addrTimer.start();
+
 	pollHostConfig();
+	pollHostAddresses();
 
 	while (!m_killed) {
 		unsigned int ms = stopWatch.elapsed();
@@ -288,6 +292,12 @@ int CMMDVMDisplay::run()
 		if (m_confTimer.isRunning() && m_confTimer.hasExpired()) {
 			pollHostConfig();
 			m_confTimer.start();
+		}
+
+		m_addrTimer.clock(ms);
+		if (m_addrTimer.isRunning() && m_addrTimer.hasExpired()) {
+			pollHostAddresses();
+			m_addrTimer.start();
 		}
 
 		if (ms < 10U)
@@ -950,6 +960,29 @@ void CMMDVMDisplay::parsePrograms(const nlohmann::json& json)
 void CMMDVMDisplay::parseAddresses(const nlohmann::json& json)
 {
 	assert(m_display != nullptr);
+
+	try {
+		std::string ipV4;
+		std::string ipV6;
+
+		if (json.contains("IPv4")) {
+			std::string ip = json["IPv4"];
+			ipV4 = ip;
+		}
+
+		if (json.contains("IPv6")) {
+			std::string ip = json["IPv6"];
+			ipV6 = ip;
+		}
+
+		m_display->writeIP(ipV4, ipV6);
+
+		// Stop polling the Host IP data
+		m_addrTimer.stop();
+	}
+	catch (nlohmann::json::exception& ex) {
+		LogError("Error parsing Addresses - %s", ex.what());
+	}
 }
 
 void CMMDVMDisplay::parseHostConfig(const nlohmann::json& json)
@@ -996,6 +1029,14 @@ void CMMDVMDisplay::pollHostConfig()
 {
 	std::string   topic = m_mqttInfoName + "/command";
 	std::string command = "Config " + m_hostConfName;
+
+	m_mqtt->publish(topic, command);
+}
+
+void CMMDVMDisplay::pollHostAddresses()
+{
+	std::string   topic = m_mqttInfoName + "/command";
+	std::string command = "Addresses";
 
 	m_mqtt->publish(topic, command);
 }

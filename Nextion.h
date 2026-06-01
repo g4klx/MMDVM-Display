@@ -83,6 +83,7 @@ protected:
 
 	virtual void writeCPUInt(float temperature, float frequency, float load) override;
 	virtual void writeInfoInt(float rxFrequency, float txFrequency, const std::string& location) override;
+	virtual void writeIPInt(const std::string& ipV4, const std::string& ipV6) override;
 
 	virtual void clockInt(unsigned int ms) override;
 
@@ -90,7 +91,8 @@ private:
 	std::string    m_callsign;
 	unsigned int   m_id;
 	bool           m_duplex;
-	std::string    m_ipAddress;
+	std::string    m_ipV4;
+	std::string    m_ipV6;
 	float          m_temperature;
 	float          m_frequency;
 	float          m_load;
