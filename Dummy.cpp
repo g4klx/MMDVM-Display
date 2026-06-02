@@ -140,6 +140,21 @@ void CDummy::close()
 	LogDebug("Dummy: close called");
 }
 
+void CDummy::writeCPUInt(float temperature, float frequency, float load)
+{
+	LogDebug("Dummy: writeCPUInt called, temperature=%f, frequency=%f, load=%f", temperature, frequency, load);
+}
+
+void CDummy::writeInfoInt(float rxFrequency, float txFrequency, const std::string& location)
+{
+	LogDebug("Dummy: writeInfoInt called, rxFrequency=%f, txFrequency=%f, location=\"%s\"", rxFrequency, txFrequency, location.c_str());
+}
+
+void CDummy::writeIPInt(const std::string& ipV4, const std::string& ipV6)
+{
+	LogDebug("Dummy: writeIPInt called, ipV4=\"%s\", ipV6=\"%s\"", ipV4.c_str(), ipV6.c_str());
+}
+
 void CDummy::clockInt(unsigned int ms)
 {
 }
