@@ -3,7 +3,7 @@
 
 CC      = cc
 CXX     = c++
-CFLAGS  = -g -O3 -Wall -std=c++0x -MMD -MD -pthread -I/usr/local/include
+CFLAGS  = -g -O3 -Wall -std=c++11 -MMD -MD -pthread -I/usr/local/include
 LIBS    = -lpthread -lutil -lmosquitto
 LDFLAGS = -g -L/usr/local/lib
 
@@ -12,23 +12,23 @@ DEPS = $(SRCS:.cpp=.d)
 
 # This makefile is for use with the Raspberry Pi when using an HD44780 compatible display. The wiringpi library is needed.
 # Support for the Adafruit i2c 16 x 2 RGB LCD Pi Plate
-#CFLAGS  = -g -O3 -Wall -std=c++0x -pthread -DUSE_HD44780 -DUSE_ADAFRUIT_DISPLAY -I/usr/local/include
+#CFLAGS  = -g -O3 -Wall -std=c++11 -pthread -DUSE_HD44780 -DUSE_ADAFRUIT_DISPLAY -I/usr/local/include
 #LIBS    = -lwiringPi -lwiringPiDev -lpthread -lutil -lmosquitto
 
 # This makefile is for use with the Raspberry Pi when using an HD44780 compatible display. The wiringpi library is needed.
-#CFLAGS  = -g -O3 -Wall -std=c++0x -pthread -DUSE_HD44780 -I/usr/local/include
+#CFLAGS  = -g -O3 -Wall -std=c++11 -pthread -DUSE_HD44780 -I/usr/local/include
 #LIBS    = -lwiringPi -lwiringPiDev -lpthread -lutil -lmosquitto
 
 # This makefile is for use with the Raspberry Pi when using an OLED display. The wiringpi library is not needed.
-#CFLAGS  = -g -O3 -Wall -std=c++0x -pthread -DUSE_OLED -I/usr/local/include
+#CFLAGS  = -g -O3 -Wall -std=c++11 -pthread -DUSE_OLED -I/usr/local/include
 #LIBS    = -lArduiPi_OLED -lpthread -lutil -lmosquitto
 
 # This makefile is for use with the Raspberry Pi when using an HD44780 compatible display. The wiringpi library is needed.
 # Support for the HD44780 connected via a PCF8574 8-bit GPIO expander IC
-#CFLAGS  = -g -O3 -Wall -std=c++0x -pthread -DUSE_HD44780 -DUSE_PCF8574_DISPLAY -I/usr/local/include
+#CFLAGS  = -g -O3 -Wall -std=c++11 -pthread -DUSE_HD44780 -DUSE_PCF8574_DISPLAY -I/usr/local/include
 #LIBS    = -lwiringPi -lwiringPiDev -lpthread -lutil -lmosquitto
 
-OBJS1 =	Conf.o Display.o MMDVM-Display.o Dummy.o HD44780.o LCDproc.o Log.o MQTTConnection.o ModemSerialPort.o Mutex.o NetworkInfo.o \
+OBJS1 =	Conf.o Display.o MMDVM-Display.o Dummy.o HD44780.o LCDproc.o Log.o MQTTConnection.o ModemSerialPort.o Mutex.o \
 	Nextion.o OLED.o SerialPort.o StopWatch.o TFTSurenoo.o Thread.o Timer.o UARTController.o Utils.o
 
 OBJS2 =	Conf.o Log.o MQTTConnection.o ModemSerialPort.o Mutex.o NextionUpdater.o SerialPort.o StopWatch.o Thread.o Timer.o \

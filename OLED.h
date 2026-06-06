@@ -41,7 +41,6 @@
 #include "ArduiPi_OLED_lib.h"
 #include "Adafruit_GFX.h"
 #include "ArduiPi_OLED.h"
-#include "NetworkInfo.h"
 
 class COLED : public CDisplay 
 {
@@ -83,6 +82,9 @@ protected:
 	virtual void writeCWInt() override;
 	virtual void clearCWInt() override;
 
+	virtual void writeCPUInt(float temperature, float frequency, float load) override;
+	virtual void writeIPInt(const std::string& ipV4, const std::string& ipV6) override;
+
 private:
 	std::string   m_callsign;
 	unsigned int  m_id;
@@ -97,6 +99,7 @@ private:
 	bool          m_displayRotate;
 	bool          m_displayLogoScreensaver;
 	std::string   m_ipaddress;
+	float         m_temperature;
 	ArduiPi_OLED  m_display;
 
 	float readTemperature(const std::string& filePath);
