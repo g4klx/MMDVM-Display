@@ -171,11 +171,11 @@ const unsigned char logo_POCSAG_bmp[] =
 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff
 };
 
-COLED::COLED(const std::string& callsign, unsigned int id, bool duplex, unsigned char displayType, unsigned char displayBrightness, bool displayInvert, bool displayScroll, bool displayRotate, bool displayLogoScreensaver) :
+COLED::COLED(unsigned char displayType, unsigned char displayBrightness, bool displayInvert, bool displayScroll, bool displayRotate, bool displayLogoScreensaver) :
 CDisplay(),
-m_callsign(callsign),
-m_id(id),
-m_duplex(duplex),
+m_callsign(),
+m_id(0U),
+m_duplex(false),
 m_displayType(displayType),
 m_displayBrightness(displayBrightness),
 m_displayInvert(displayInvert),
@@ -653,6 +653,16 @@ void COLED::clearCWInt()
 	m_display.display();
 }
 
+void COLED::writeGeneralInt(const std::string& callsign, unsigned int id, bool duplex)
+{
+	m_callsign = callsign;
+	m_id       = id;
+	m_duplex   = duplex;
+
+	if (m_mode == MODE_IDLE)
+		setIdle();
+}
+
 void COLED::close()
 {
 	m_display.clearDisplay();
@@ -697,7 +707,7 @@ void COLED::OLED_statusbar()
 
 void COLED::writeCPUInt(float temperature, float frequency, float load)
 {
-	m_temperature = temperature / 1000.0F;
+	m_temperature = temperature;
 }
 
 void COLED::writeIPInt(const std::string& ipV4, const std::string& ipV6)

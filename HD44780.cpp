@@ -44,11 +44,11 @@ const unsigned int YSF_RSSI_COUNT   = 13U;   // 13 * 100ms = 1300ms
 const unsigned int P25_RSSI_COUNT   = 7U;    // 7 * 180ms = 1260ms
 const unsigned int NXDN_RSSI_COUNT  = 28U;   // 28 * 40ms = 1120ms
 
-CHD44780::CHD44780(const std::string& callsign, unsigned int id, bool duplex, unsigned int rows, unsigned int cols, const std::vector<unsigned int>& pins, unsigned int i2cAddress, bool pwm, unsigned int pwmPin, unsigned int pwmBright, unsigned int pwmDim, bool displayClock, bool utc) :
+CHD44780::CHD44780(unsigned int rows, unsigned int cols, const std::vector<unsigned int>& pins, unsigned int i2cAddress, bool pwm, unsigned int pwmPin, unsigned int pwmBright, unsigned int pwmDim, bool displayClock, bool utc) :
 CDisplay(),
-m_callsign(callsign),
-m_id(id),
-m_duplex(duplex),
+m_callsign(),
+m_id(0U),
+m_duplex(false),
 m_rows(rows),
 m_cols(cols),
 m_rb(pins.at(0U)),
@@ -1031,6 +1031,13 @@ void CHD44780::clearCWInt()
 {
 	::lcdPosition(m_fd, m_cols - 5, m_rows - 1);
 	::lcdPuts(m_fd, " Idle");
+}
+
+void CHD44780::writeGeneralInt(const std::string& callsign, unsigned int id, bool duplex)
+{
+	m_callsign = callsign;
+	m_id       = id;
+	m_duplex   = duplex;
 }
 
 void CHD44780::clockInt(unsigned int ms)

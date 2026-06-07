@@ -307,12 +307,17 @@ void CDisplay::writeCW()
 	writeCWInt();
 }
 
+void CDisplay::writeGeneral(const std::string& callsign, unsigned int id, bool duplex)
+{
+	writeGeneralInt(callsign, id, duplex);
+}
+
 void CDisplay::writeCPU(float temperature, float frequency, float load)
 {
 	writeCPUInt(temperature, frequency, load);
 }
 
-void CDisplay::writeInfo(float rxFrequency, float txFrequency, const std::string& location)
+void CDisplay::writeInfo(unsigned int rxFrequency, unsigned int txFrequency, const std::string& location)
 {
 	writeInfoInt(rxFrequency, txFrequency, location);
 }
@@ -441,11 +446,15 @@ void CDisplay::writeFMRSSIInt(int rssi)
 {
 }
 
+void CDisplay::writeGeneralInt(const std::string& callsign, unsigned int id, bool duplex)
+{
+}
+
 void CDisplay::writeCPUInt(float temperature, float frequency, float load)
 {
 }
 
-void CDisplay::writeInfoInt(float rxFrequency, float txFrequency, const std::string& location)
+void CDisplay::writeInfoInt(unsigned int rxFrequency, unsigned int txFrequency, const std::string& location)
 {
 }
 

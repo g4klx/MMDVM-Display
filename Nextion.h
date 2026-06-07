@@ -31,7 +31,7 @@
 class CNextion : public CDisplay
 {
 public:
-	CNextion(const std::string& callsign, unsigned int id, bool duplex, ISerialPort* serial, unsigned int brightness, bool displayClock, bool utc, unsigned int idleBrightness, unsigned int screenLayout, bool displayTempInF);
+	CNextion(ISerialPort* serial, unsigned int brightness, bool displayClock, bool utc, unsigned int idleBrightness, unsigned int screenLayout, bool displayTempInF);
 	virtual ~CNextion();
 
 	virtual bool open() override;
@@ -81,8 +81,9 @@ protected:
 	virtual void writeCWInt() override;
 	virtual void clearCWInt() override;
 
+	virtual void writeGeneralInt(const std::string& callsign, unsigned int id, bool duplex) override;
 	virtual void writeCPUInt(float temperature, float frequency, float load) override;
-	virtual void writeInfoInt(float rxFrequency, float txFrequency, const std::string& location) override;
+	virtual void writeInfoInt(unsigned int rxFrequency, unsigned int txFrequency, const std::string& location) override;
 	virtual void writeIPInt(const std::string& ipV4, const std::string& ipV6) override;
 
 	virtual void clockInt(unsigned int ms) override;

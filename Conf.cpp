@@ -40,9 +40,6 @@ enum class SECTION {
 
 CConf::CConf(const std::string& file) :
 m_file(file),
-m_callsign(),
-m_id(0U),
-m_duplex(true),
 m_display("Dummy"),
 m_temperatureInF(false),
 m_daemon(false),
@@ -160,16 +157,7 @@ bool CConf::read()
 		}
 
 		if (section == SECTION::GENERAL) {
-			if (::strcmp(key, "Callsign") == 0) {
-				// Convert the callsign to upper case
-				for (unsigned int i = 0U; value[i] != 0; i++)
-					value[i] = ::toupper(value[i]);
-				m_callsign = value;
-			} else if (::strcmp(key, "Id") == 0)
-				m_id = (unsigned int)::atoi(value);
-			else if (::strcmp(key, "Duplex") == 0)
-				m_duplex = ::atoi(value) == 1;
-			else if (::strcmp(key, "Display") == 0)
+			if (::strcmp(key, "Display") == 0)
 				m_display = value;
 			else if (::strcmp(key, "TemperatureInF") == 0)
 				m_temperatureInF = ::atoi(value) == 1;
@@ -280,21 +268,6 @@ bool CConf::read()
 	::fclose(fp);
 
 	return true;
-}
-
-std::string CConf::getCallsign() const
-{
-	return m_callsign;
-}
-
-unsigned int CConf::getId() const
-{
-	return m_id;
-}
-
-bool CConf::getDuplex() const
-{
-	return m_duplex;
 }
 
 std::string CConf::getDisplay() const

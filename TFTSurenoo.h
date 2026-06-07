@@ -29,7 +29,7 @@
 class CTFTSurenoo : public CDisplay
 {
 public:
-	CTFTSurenoo(const std::string& callsign, unsigned int id, bool duplex, ISerialPort* serial, unsigned int brightness, unsigned int screenLayout);
+	CTFTSurenoo(ISerialPort* serial, unsigned int brightness, unsigned int screenLayout);
 	virtual ~CTFTSurenoo();
 
 	virtual bool open() override;
@@ -65,6 +65,8 @@ protected:
 
 	virtual void writeCWInt() override;
 	virtual void clearCWInt() override;
+
+	virtual void writeGeneralInt(const std::string& callsign, unsigned int id, bool duplex) override;
 
 	virtual void clockInt(unsigned int ms) override;
 

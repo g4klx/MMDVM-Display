@@ -95,11 +95,11 @@ bool           m_connected(false);
 char           m_displayBuffer1[BUFFER_MAX_LEN];
 char           m_displayBuffer2[BUFFER_MAX_LEN];
 
-CLCDproc::CLCDproc(const std::string& callsign,unsigned int id, bool duplex, const std::string& address, unsigned int port, unsigned short localPort, bool displayClock, bool utc, bool dimOnIdle) :
+CLCDproc::CLCDproc(const std::string& address, unsigned int port, unsigned short localPort, bool displayClock, bool utc, bool dimOnIdle) :
 CDisplay(),
-m_callsign(callsign),
-m_id(id),
-m_duplex(duplex),
+m_callsign(),
+m_id(0U),
+m_duplex(false),
 m_address(address),
 m_port(port),
 m_localPort(localPort),
@@ -524,6 +524,13 @@ void CLCDproc::writeCWInt()
 
 void CLCDproc::clearCWInt()
 {
+}
+
+void CLCDproc::writeGeneralInt(const std::string& callsign, unsigned int id, bool duplex)
+{
+	m_callsign = callsign;
+	m_id       = id;
+	m_duplex   = duplex;
 }
 
 void CLCDproc::clockInt(unsigned int ms)

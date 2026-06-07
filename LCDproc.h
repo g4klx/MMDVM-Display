@@ -34,7 +34,7 @@
 class CLCDproc : public CDisplay
 {
 public:
-	CLCDproc(const std::string& callsign,unsigned int id, bool duplex, const std::string& address, unsigned int port, unsigned short localPort, bool displayClock, bool utc, bool dimOnIdle);
+	CLCDproc(const std::string& address, unsigned int port, unsigned short localPort, bool displayClock, bool utc, bool dimOnIdle);
 	virtual ~CLCDproc();
 
 	virtual bool open() override;
@@ -76,6 +76,8 @@ protected:
 
 	virtual void writeCWInt() override;
 	virtual void clearCWInt() override;
+
+	virtual void writeGeneralInt(const std::string& callsign, unsigned int id, bool duplex) override;
 
 	virtual void clockInt(unsigned int ms) override;
 

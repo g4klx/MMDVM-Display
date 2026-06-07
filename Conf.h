@@ -31,9 +31,6 @@ public:
 	bool read();
 
 	// The General section
-	std::string  getCallsign() const;
-	unsigned int getId() const;
-	bool         getDuplex() const;
 	std::string  getDisplay() const;
 	bool         getTemperatureInF() const;
 	bool         getDaemon() const;
@@ -97,9 +94,6 @@ public:
 
 private:
 	std::string  m_file;
-	std::string  m_callsign;
-	unsigned int m_id;
-	bool         m_duplex;
 	std::string  m_display;
 	bool         m_temperatureInF;
 	bool         m_daemon;

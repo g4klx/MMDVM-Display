@@ -91,7 +91,7 @@ enum class ADAFRUIT_COLOUR {
 class CHD44780 : public CDisplay
 {
 public:
-	CHD44780(const std::string& callsign, unsigned int id, bool duplex, unsigned int rows, unsigned int cols, const std::vector<unsigned int>& pins, unsigned int i2cAddress, bool pwm, unsigned int pwmPin, unsigned int pwmBright, unsigned int pwmDim, bool displayClock, bool utc);
+	CHD44780(unsigned int rows, unsigned int cols, const std::vector<unsigned int>& pins, unsigned int i2cAddress, bool pwm, unsigned int pwmPin, unsigned int pwmBright, unsigned int pwmDim, bool displayClock, bool utc);
 	virtual ~CHD44780();
 
 	virtual bool open() override;
@@ -132,6 +132,8 @@ protected:
 
 	virtual void writeCWInt() override;
 	virtual void clearCWInt() override;
+
+	virtual void writeGeneralInt(const std::string& callsign, unsigned int id, bool duplex) override;
 
 	virtual void clockInt(unsigned int ms) override;
 

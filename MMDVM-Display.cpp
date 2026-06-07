@@ -32,6 +32,8 @@
 #include "Log.h"
 #include "GitVersion.h"
 
+#include <iostream>
+
 #if defined(USE_HD44780)
 #include "HD44780.h"
 #endif
@@ -335,7 +337,7 @@ bool CMMDVMDisplay::createDisplay()
 		else
 			serial = new CUARTController(port, 115200U);
 
-		m_display = new CTFTSurenoo(m_conf.getCallsign(), m_conf.getId(), m_conf.getDuplex(), serial, brightness, screenLayout);
+		m_display = new CTFTSurenoo(serial, brightness, screenLayout);
 	} else if (type == "Nextion") {
 		std::string port            = m_conf.getNextionPort();
 		unsigned int brightness     = m_conf.getNextionBrightness();
@@ -373,7 +375,7 @@ bool CMMDVMDisplay::createDisplay()
 
 		if (port == "modem") {
 			ISerialPort* serial = m_msp = new CModemSerialPort(m_conf.getMQTTHostName());
-			m_display = new CNextion(m_conf.getCallsign(), m_conf.getId(), m_conf.getDuplex(), serial, brightness, displayClock, utc, idleBrightness, screenLayout, tempInF);
+			m_display = new CNextion(serial, brightness, displayClock, utc, idleBrightness, screenLayout, tempInF);
 		} else {
 			unsigned int baudrate = 9600U;
 			if (screenLayout == 4U)
@@ -381,7 +383,7 @@ bool CMMDVMDisplay::createDisplay()
 
 			LogInfo("    Display baudrate: %u ", baudrate);
 			ISerialPort* serial = new CUARTController(port, baudrate);
-			m_display = new CNextion(m_conf.getCallsign(), m_conf.getId(), m_conf.getDuplex(), serial, brightness, displayClock, utc, idleBrightness, screenLayout, tempInF);
+			m_display = new CNextion(serial, brightness, displayClock, utc, idleBrightness, screenLayout, tempInF);
 		}
 	} else if (type == "LCDproc") {
 		std::string address       = m_conf.getLCDprocAddress();
@@ -405,7 +407,7 @@ bool CMMDVMDisplay::createDisplay()
 		if (displayClock)
 			LogInfo("    Display UTC: %s", utc ? "yes" : "no");
 
-		m_display = new CLCDproc(m_conf.getCallsign(), m_conf.getId(), m_conf.getDuplex(), address, port, localPort, displayClock, utc, dimOnIdle);
+		m_display = new CLCDproc(address, port, localPort, displayClock, utc, dimOnIdle);
 #if defined(USE_HD44780)
 	} else if (type == "HD44780") {
 		unsigned int rows              = m_conf.getHD44780Rows();
@@ -440,7 +442,7 @@ bool CMMDVMDisplay::createDisplay()
 			if (displayClock)
 				LogInfo("    Display UTC: %s", utc ? "yes" : "no");
 
-			m_display = new CHD44780(m_conf.getCallsign(), m_conf.getId(), m_conf.getDuplex(), rows, columns, pins, i2cAddress, pwm, pwmPin, pwmBright, pwmDim, displayClock, utc);
+			m_display = new CHD44780(rows, columns, pins, i2cAddress, pwm, pwmPin, pwmBright, pwmDim, displayClock, utc);
 		}
 #endif
 #if defined(USE_OLED)
@@ -452,7 +454,7 @@ bool CMMDVMDisplay::createDisplay()
 		bool          rotate     = m_conf.getOLEDRotate();
 		bool          logosaver  = m_conf.getOLEDLogoScreensaver();
 
-		m_display = new COLED(m_conf.getCallsign(), m_conf.getId(), m_conf.getDuplex(), type, brightness, invert, scroll, rotate, logosaver);
+		m_display = new COLED(type, brightness, invert, scroll, rotate, logosaver);
 #endif
 	} else if (type == "Dummy") {
 		m_display = new CDummy;
@@ -580,13 +582,13 @@ void CMMDVMDisplay::readInfo(const std::string& text)
 			return;
 		}
 
-		if (j.contains("Programs") && j["Programs"].is_object()) {
+		if (j.contains("Programs") && j["Programs"].is_array()) {
 			LogDebug("Identified as a Programs message");
 			parsePrograms(j["Programs"]);
 			return;
 		}
 
-		if (j.contains("Addresses") && j["Addresses"].is_object()) {
+		if (j.contains("Addresses") && j["Addresses"].is_array()) {
 			LogDebug("Identified as an Addresses message");
 			parseAddresses(j["Addresses"]);
 			return;
@@ -962,23 +964,32 @@ void CMMDVMDisplay::parseAddresses(const nlohmann::json& json)
 	assert(m_display != nullptr);
 
 	try {
-		std::string ipV4;
-		std::string ipV6;
+		// We only take the first external interface
+		for (const auto& it : json.items()) {
+			nlohmann::json obj = it.value();
 
-		if (json.contains("IPv4")) {
-			std::string ip = json["IPv4"];
-			ipV4 = ip;
+			std::cout << "obj = " << obj.dump() << std::endl;
+
+			std::string ipV4;
+			std::string ipV6;
+
+			if (obj.contains("IPv4")) {
+				std::string ip = json["IPv4"];
+				ipV4 = ip;
+			}
+
+			if (obj.contains("IPv6")) {
+				std::string ip = json["IPv6"];
+				ipV6 = ip;
+			}
+
+			m_display->writeIP(ipV4, ipV6);
+
+			// Stop polling the Host IP data
+			m_addrTimer.stop();
+
+			return;
 		}
-
-		if (json.contains("IPv6")) {
-			std::string ip = json["IPv6"];
-			ipV6 = ip;
-		}
-
-		m_display->writeIP(ipV4, ipV6);
-
-		// Stop polling the Host IP data
-		m_addrTimer.stop();
 	}
 	catch (nlohmann::json::exception& ex) {
 		LogError("Error parsing Addresses - %s", ex.what());
@@ -990,23 +1001,50 @@ void CMMDVMDisplay::parseHostConfig(const nlohmann::json& json)
 	assert(m_display != nullptr);
 
 	try {
-		float rxFrequency    = -1.0F;
-		float txFrequency    = -1.0F;
-		std::string location = "?";
+		if (json.contains("General") && json["General"].is_object()) {
+			std::string callsign;
+			unsigned int id = 0U;
+			bool duplex = false;
+
+			const nlohmann::json j = json["General"];
+
+			if (j.contains("Callsign")) {
+				std::string temp = j["Callsign"];
+				callsign = temp;
+			}
+
+			if (j.contains("Id")) {
+				std::string temp = j["Id"];
+				id = std::stoi(temp);
+			}
+
+			if (j.contains("Duplex")) {
+				std::string temp = j["Duplex"];
+				duplex = (std::stoi(temp) == 1);
+			}
+
+			std::cout << "Call=\"" << callsign << "\", id=" << id << ", duplex=" << duplex << std::endl;
+
+			m_display->writeGeneral(callsign, id, duplex);
+		}
 
 		if (json.contains("Info") && json["Info"].is_object()) {
+			unsigned int rxFrequency = 0U;
+			unsigned int txFrequency = 0U;
+			std::string location = "?";
+
 			const nlohmann::json j = json["Info"];
 
 			if (j.contains("RXFrequency")) {
 				// Frequency is in Hz
 				std::string freq = j["RXFrequency"];
-				rxFrequency = std::stof(freq);
+				rxFrequency = std::stoi(freq);
 			}
 
 			if (j.contains("TXFrequency")) {
 				// Frequency is in Hz
 				std::string freq = j["TXFrequency"];
-				txFrequency = std::stof(freq);
+				txFrequency = std::stoi(freq);
 			}
 
 			if (j.contains("Location")) {
@@ -1014,14 +1052,13 @@ void CMMDVMDisplay::parseHostConfig(const nlohmann::json& json)
 				location = loc;
 			}
 
-			m_display->writeInfo(rxFrequency, txFrequency, location);
+			std::cout << "RXFrequency=" << rxFrequency << ", TXFrequency=" << txFrequency << std::endl;
 
-			// Stop polling the Host ini file data
-			m_confTimer.stop();
+			m_display->writeInfo(rxFrequency, txFrequency, location);
 		}
 	}
 	catch (nlohmann::json::exception& ex) {
-		LogError("Error parsing CPU - %s", ex.what());
+		LogError("Error parsing Host Config - %s", ex.what());
 	}
 }
 

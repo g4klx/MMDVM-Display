@@ -95,11 +95,11 @@ enum class LcdColour : unsigned char {
 #define STR_YSF			"SystemFusion"
 #define	STR_FM			"FM"
 
-CTFTSurenoo::CTFTSurenoo(const std::string& callsign, unsigned int id, bool duplex, ISerialPort* serial, unsigned int brightness, unsigned int screenLayout) :
+CTFTSurenoo::CTFTSurenoo(ISerialPort* serial, unsigned int brightness, unsigned int screenLayout) :
 CDisplay(),
-m_callsign(callsign),
-m_id(id),
-m_duplex(duplex),
+m_callsign(),
+m_id(0U),
+m_duplex(false),
 m_serial(serial),
 m_brightness(brightness),
 m_mode(MODE_IDLE),
@@ -350,6 +350,16 @@ void CTFTSurenoo::close()
 
 	m_serial->close();
 	delete m_serial;
+}
+
+void CTFTSurenoo::writeGeneralInt(const std::string& callsign, unsigned int id, bool duplex)
+{
+	m_callsign = callsign;
+	m_id       = id;
+	m_duplex   = duplex;
+
+	if (m_mode == MODE_IDLE)
+		setIdle();
 }
 
 void CTFTSurenoo::clockInt(unsigned int ms)

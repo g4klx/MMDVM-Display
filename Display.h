@@ -76,8 +76,9 @@ public:
 
 	void writeCW();
 
+	void writeGeneral(const std::string& callsign, unsigned int id, bool duplex);
 	void writeCPU(float temperature, float frequency, float load);
-	void writeInfo(float rxFrequency, float txFrequency, const std::string& location);
+	void writeInfo(unsigned int rxFrequency, unsigned int txFrequency, const std::string& location);
 	void writeIP(const std::string& ipV4, const std::string& ipV6);
 
 	virtual void close() = 0;
@@ -127,8 +128,9 @@ protected:
 	virtual void writeCWInt() = 0;
 	virtual void clearCWInt() = 0;
 
+	virtual void writeGeneralInt(const std::string& callsign, unsigned int id, bool duplex);
 	virtual void writeCPUInt(float temperature, float frequency, float load);
-	virtual void writeInfoInt(float rxFrequency, float txFrequency, const std::string& location);
+	virtual void writeInfoInt(unsigned int rxFrequency, unsigned int txFrequency, const std::string& location);
 	virtual void writeIPInt(const std::string& ipV4, const std::string& ipV6);
 
 	virtual void clockInt(unsigned int ms);

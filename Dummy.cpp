@@ -140,14 +140,19 @@ void CDummy::close()
 	LogDebug("Dummy: close called");
 }
 
+void CDummy::writeGeneralInt(const std::string& callsign, unsigned int id, bool duplex)
+{
+	LogDebug("Dummy: writeGeneralInt called, callsign=\"%s\", id=%u, duplex=%s", callsign.c_str(), id, duplex ? "true" : "false");
+}
+
 void CDummy::writeCPUInt(float temperature, float frequency, float load)
 {
 	LogDebug("Dummy: writeCPUInt called, temperature=%f, frequency=%f, load=%f", temperature, frequency, load);
 }
 
-void CDummy::writeInfoInt(float rxFrequency, float txFrequency, const std::string& location)
+void CDummy::writeInfoInt(unsigned int rxFrequency, unsigned int txFrequency, const std::string& location)
 {
-	LogDebug("Dummy: writeInfoInt called, rxFrequency=%f, txFrequency=%f, location=\"%s\"", rxFrequency, txFrequency, location.c_str());
+	LogDebug("Dummy: writeInfoInt called, rxFrequency=%u, txFrequency=%u, location=\"%s\"", rxFrequency, txFrequency, location.c_str());
 }
 
 void CDummy::writeIPInt(const std::string& ipV4, const std::string& ipV6)

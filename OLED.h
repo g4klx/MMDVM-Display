@@ -45,7 +45,7 @@
 class COLED : public CDisplay 
 {
 public:
-	COLED(const std::string& callsign, unsigned int id, bool duplex, unsigned char displayType, unsigned char displayBrighness, bool displayInvert, bool displayScroll, bool displayRotate, bool displayLogoScreensaver);
+	COLED(unsigned char displayType, unsigned char displayBrighness, bool displayInvert, bool displayScroll, bool displayRotate, bool displayLogoScreensaver);
 	virtual ~COLED();
 
 	virtual bool open() override;
@@ -82,6 +82,7 @@ protected:
 	virtual void writeCWInt() override;
 	virtual void clearCWInt() override;
 
+	virtual void writeGeneralInt(const std::string& callsign, unsigned int id, bool duplex) override;
 	virtual void writeCPUInt(float temperature, float frequency, float load) override;
 	virtual void writeIPInt(const std::string& ipV4, const std::string& ipV6) override;
 

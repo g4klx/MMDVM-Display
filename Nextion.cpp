@@ -20,6 +20,8 @@
 #include "Utils.h"
 #include "Log.h"
 
+#include <iostream>
+
 #include <cstdio>
 #include <cassert>
 #include <cstring>
@@ -38,11 +40,11 @@
 
 const unsigned int MAX_REPLY_LENGTH = 9U;
 
-CNextion::CNextion(const std::string& callsign, unsigned int id, bool duplex, ISerialPort* serial, unsigned int brightness, bool displayClock, bool utc, unsigned int idleBrightness, unsigned int screenLayout, bool displayTempInF) :
+CNextion::CNextion(ISerialPort* serial, unsigned int brightness, bool displayClock, bool utc, unsigned int idleBrightness, unsigned int screenLayout, bool displayTempInF) :
 CDisplay(),
-m_callsign(callsign),
-m_id(id),
-m_duplex(duplex),
+m_callsign(),
+m_id(0U),
+m_duplex(false),
 m_ipV4(),
 m_ipV6(),
 m_temperature(-1.0F),
@@ -136,13 +138,11 @@ void CNextion::setIdleInt()
 
 		// CPU temperature
 		if (m_temperature != -1.0F) {
-			float val = m_temperature / 1000.0F;
-
 			if (m_displayTempInF) {
-				val = (1.8F * val) + 32.0F;
+				float val = (1.8F * m_temperature) + 32.0F;
 				::sprintf(command, "t20.txt=\"%2.1f %cF\"", val, 176);
 			} else {	
-				::sprintf(command, "t20.txt=\"%2.1f %cC\"", val, 176);
+				::sprintf(command, "t20.txt=\"%2.1f %cC\"", m_temperature, 176);
 			}
 
 			sendCommand(command);
@@ -172,14 +172,14 @@ void CNextion::setIdleInt()
 	}
 
 	if (m_rxFrequency != -1.0F) {
-		::sprintf(command, "t30.txt=\"%.0f MHz\"", m_rxFrequency / 1000000.0F);
+		::sprintf(command, "t30.txt=\"%.4f MHz\"", m_rxFrequency);
 		sendCommand(command);
 	} else {
 		sendCommand("t30.txt=\"?\"");
 	}
 
 	if (m_txFrequency != -1.0F) {
-		::sprintf(command, "t31.txt=\"%.0f MHz\"", m_txFrequency / 1000000.0F);
+		::sprintf(command, "t31.txt=\"%.4f MHz\"", m_txFrequency);
 		sendCommand(command);
 	} else {
 		sendCommand("t31.txt=\"?\"");
@@ -766,18 +766,38 @@ void CNextion::clearCWInt()
 	sendCommandAction(11U);
 }
 
+void CNextion::writeGeneralInt(const std::string& callsign, unsigned int id, bool duplex)
+{
+	if (m_callsign.empty()) {
+		m_callsign = callsign;
+		m_id       = id;
+		m_duplex   = duplex;
+
+		if (m_mode == MODE_IDLE)
+			setIdle();
+	}
+}
+
 void CNextion::writeCPUInt(float temperature, float frequency, float load)
 {
 	m_temperature = temperature;
 	m_frequency   = frequency;
 	m_load        = load;
+
+	if (m_mode == MODE_IDLE)
+		setIdle();
 }
 
-void CNextion::writeInfoInt(float rxFrequency, float txFrequency, const std::string& location)
+void CNextion::writeInfoInt(unsigned int rxFrequency, unsigned int txFrequency, const std::string& location)
 {
-	m_rxFrequency = rxFrequency;
-	m_txFrequency = txFrequency;
-	m_location    = location;
+	if (m_rxFrequency == -1.0F) {
+		m_rxFrequency = float(rxFrequency) / 1000000.0F;
+		m_txFrequency = float(txFrequency) / 1000000.0F;
+		m_location    = location;
+
+		if (m_mode == MODE_IDLE)
+			setIdle();
+	}
 }
 
 void CNextion::writeIPInt(const std::string& ipV4, const std::string& ipV6)
@@ -787,6 +807,9 @@ void CNextion::writeIPInt(const std::string& ipV4, const std::string& ipV6)
 
 	if (!ipV6.empty())
 		m_ipV6 = ipV6;
+
+	if (m_mode == MODE_IDLE)
+		setIdle();
 }
 
 void CNextion::clockInt(unsigned int ms)
@@ -881,7 +904,8 @@ void CNextion::clockInt(unsigned int ms)
 
 			m_mutex.unlock();
 
-			CUtils::dump(1U, "Nextion output", buffer, len);
+			// CUtils::dump(1U, "Nextion output", buffer, len);
+			// ::printf("Nextion=\"%.*s\"\n", len - 3U, buffer);
 
 			m_serial->write(buffer, len);
 
