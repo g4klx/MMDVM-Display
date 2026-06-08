@@ -32,8 +32,6 @@
 #include "Log.h"
 #include "GitVersion.h"
 
-#include <iostream>
-
 #if defined(USE_HD44780)
 #include "HD44780.h"
 #endif
@@ -148,8 +146,8 @@ m_msp(nullptr),
 m_hostConfName(),
 m_mqttInfoName(),
 m_temperatureInF(false),
-m_confTimer(1000U, 60U),
-m_addrTimer(1000U, 60U)
+m_confTimer(1000U, 15U),
+m_addrTimer(1000U, 15U)
 {
 }
 
@@ -966,24 +964,24 @@ void CMMDVMDisplay::parseAddresses(const nlohmann::json& json)
 	try {
 		// We only take the first external interface
 		for (const auto& it : json.items()) {
-			nlohmann::json obj = it.value();
-
-			std::cout << "obj = " << obj.dump() << std::endl;
+			const nlohmann::json obj = it.value();
 
 			std::string ipV4;
 			std::string ipV6;
 
-			if (obj.contains("IPv4")) {
-				std::string ip = json["IPv4"];
+			std::string name = obj["name"];
+
+			if (obj.contains("ipv4")) {
+				std::string ip = obj["ipv4"];
 				ipV4 = ip;
 			}
 
-			if (obj.contains("IPv6")) {
-				std::string ip = json["IPv6"];
+			if (obj.contains("ipv6")) {
+				std::string ip = obj["ipv6"];
 				ipV6 = ip;
 			}
 
-			m_display->writeIP(ipV4, ipV6);
+			m_display->writeIP(name, ipV4, ipV6);
 
 			// Stop polling the Host IP data
 			m_addrTimer.stop();
@@ -1023,8 +1021,6 @@ void CMMDVMDisplay::parseHostConfig(const nlohmann::json& json)
 				duplex = (std::stoi(temp) == 1);
 			}
 
-			std::cout << "Call=\"" << callsign << "\", id=" << id << ", duplex=" << duplex << std::endl;
-
 			m_display->writeGeneral(callsign, id, duplex);
 		}
 
@@ -1052,10 +1048,11 @@ void CMMDVMDisplay::parseHostConfig(const nlohmann::json& json)
 				location = loc;
 			}
 
-			std::cout << "RXFrequency=" << rxFrequency << ", TXFrequency=" << txFrequency << std::endl;
-
 			m_display->writeInfo(rxFrequency, txFrequency, location);
 		}
+
+		// Stop polling the Host config data
+		m_confTimer.stop();
 	}
 	catch (nlohmann::json::exception& ex) {
 		LogError("Error parsing Host Config - %s", ex.what());

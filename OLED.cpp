@@ -710,7 +710,7 @@ void COLED::writeCPUInt(float temperature, float frequency, float load)
 	m_temperature = temperature;
 }
 
-void COLED::writeIPInt(const std::string& ipV4, const std::string& ipV6)
+void COLED::writeIPInt(const std::string& name, const std::string& ipV4, const std::string& ipV6)
 {
 	if (!ipV4.empty())
 		m_ipaddress = ipV4;

@@ -20,8 +20,6 @@
 #include "Utils.h"
 #include "Log.h"
 
-#include <iostream>
-
 #include <cstdio>
 #include <cassert>
 #include <cstring>
@@ -160,6 +158,7 @@ void CNextion::setIdleInt()
 		sendCommand("t21.txt=\"?\"");
 	}
 
+	// TODO this is incorrect
 	if (m_load != -1.0F) {
 		::sprintf(command, "t22.txt=\"%0.2f\"", m_load);
 		sendCommand(command);
@@ -179,13 +178,13 @@ void CNextion::setIdleInt()
 	}
 
 	if (m_txFrequency != -1.0F) {
-		::sprintf(command, "t31.txt=\"%.4f MHz\"", m_txFrequency);
+		::sprintf(command, "t32.txt=\"%.4f MHz\"", m_txFrequency);
 		sendCommand(command);
 	} else {
-		sendCommand("t31.txt=\"?\"");
+		sendCommand("t32.txt=\"?\"");
 	}
 
-	sendCommand("t32.txt=\"" + m_location + "\"");
+	// sendCommand("t32.txt=\"" + m_location + "\"");
 
 	sendCommand("t1.txt=\"MMDVM IDLE\"");
 	sendCommandAction(11U);
@@ -768,7 +767,7 @@ void CNextion::clearCWInt()
 
 void CNextion::writeGeneralInt(const std::string& callsign, unsigned int id, bool duplex)
 {
-	if (m_callsign.empty()) {
+	if ((callsign != m_callsign) || (id != m_id)) {
 		m_callsign = callsign;
 		m_id       = id;
 		m_duplex   = duplex;
@@ -784,13 +783,15 @@ void CNextion::writeCPUInt(float temperature, float frequency, float load)
 	m_frequency   = frequency;
 	m_load        = load;
 
-	if (m_mode == MODE_IDLE)
-		setIdle();
+	if (m_screenLayout & LAYOUT_DIY) {
+		if (m_mode == MODE_IDLE)
+			setIdle();
+	}
 }
 
 void CNextion::writeInfoInt(unsigned int rxFrequency, unsigned int txFrequency, const std::string& location)
 {
-	if (m_rxFrequency == -1.0F) {
+	if ((rxFrequency != m_rxFrequency) || (txFrequency != m_txFrequency)) {
 		m_rxFrequency = float(rxFrequency) / 1000000.0F;
 		m_txFrequency = float(txFrequency) / 1000000.0F;
 		m_location    = location;
@@ -800,7 +801,7 @@ void CNextion::writeInfoInt(unsigned int rxFrequency, unsigned int txFrequency, 
 	}
 }
 
-void CNextion::writeIPInt(const std::string& ipV4, const std::string& ipV6)
+void CNextion::writeIPInt(const std::string& name, const std::string& ipV4, const std::string& ipV6)
 {
 	if (!ipV4.empty())
 		m_ipV4 = ipV4;
@@ -868,7 +869,6 @@ void CNextion::clockInt(unsigned int ms)
 				case 0x09U:	// Invalid CRC
 				case 0x11U:	// Invalid baud rate setting
 				case 0x12U:	// Invalid waveform ID or channel number
-				case 0x1AU:	// Invalid variable name or operation
 				case 0x1BU:	// Invalid variable operation
 				case 0x1CU:	// Assignment failed to assign
 				case 0x1DU:	// EEPROM operation failed
@@ -878,6 +878,9 @@ void CNextion::clockInt(unsigned int ms)
 				case 0x23U:	// Variable name too long
 				case 0x24U:	// Serial buffer overflow
 					LogWarning("Nextion error response - 0x%02X", m_reply[3U]);
+					break;
+				case 0x1AU:	// Invalid variable name or operation
+					LogDebug("Nextion error response - 0x%02X", m_reply[3U]);
 					break;
 				case 0x01U:	// Instruction successful
 					break;

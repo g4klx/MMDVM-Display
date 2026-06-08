@@ -322,9 +322,9 @@ void CDisplay::writeInfo(unsigned int rxFrequency, unsigned int txFrequency, con
 	writeInfoInt(rxFrequency, txFrequency, location);
 }
 
-void CDisplay::writeIP(const std::string& ipV4, const std::string& ipV6)
+void CDisplay::writeIP(const std::string& name, const std::string& ipV4, const std::string& ipV6)
 {
-	writeIPInt(ipV4, ipV6);
+	writeIPInt(name, ipV4, ipV6);
 }
 
 void CDisplay::clock(unsigned int ms)
@@ -458,6 +458,6 @@ void CDisplay::writeInfoInt(unsigned int rxFrequency, unsigned int txFrequency, 
 {
 }
 
-void CDisplay::writeIPInt(const std::string& ipV4, const std::string& ipV6)
+void CDisplay::writeIPInt(const std::string& name, const std::string& ipV4, const std::string& ipV6)
 {
 }

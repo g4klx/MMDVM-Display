@@ -155,9 +155,9 @@ void CDummy::writeInfoInt(unsigned int rxFrequency, unsigned int txFrequency, co
 	LogDebug("Dummy: writeInfoInt called, rxFrequency=%u, txFrequency=%u, location=\"%s\"", rxFrequency, txFrequency, location.c_str());
 }
 
-void CDummy::writeIPInt(const std::string& ipV4, const std::string& ipV6)
+void CDummy::writeIPInt(const std::string& name, const std::string& ipV4, const std::string& ipV6)
 {
-	LogDebug("Dummy: writeIPInt called, ipV4=\"%s\", ipV6=\"%s\"", ipV4.c_str(), ipV6.c_str());
+	LogDebug("Dummy: writeIPInt called, name=\"%s\", ipV4=\"%s\", ipV6=\"%s\"", name.c_str(), ipV4.c_str(), ipV6.c_str());
 }
 
 void CDummy::clockInt(unsigned int ms)

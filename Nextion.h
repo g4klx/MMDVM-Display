@@ -84,7 +84,7 @@ protected:
 	virtual void writeGeneralInt(const std::string& callsign, unsigned int id, bool duplex) override;
 	virtual void writeCPUInt(float temperature, float frequency, float load) override;
 	virtual void writeInfoInt(unsigned int rxFrequency, unsigned int txFrequency, const std::string& location) override;
-	virtual void writeIPInt(const std::string& ipV4, const std::string& ipV6) override;
+	virtual void writeIPInt(const std::string& name, const std::string& ipV4, const std::string& ipV6) override;
 
 	virtual void clockInt(unsigned int ms) override;
 
