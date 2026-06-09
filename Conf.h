@@ -70,6 +70,7 @@ public:
 
 	// The Nextion section
 	std::string  getNextionPort() const;
+	unsigned int getNextionSpeed() const;
 	unsigned int getNextionBrightness() const;
 	bool         getNextionDisplayClock() const;
 	bool         getNextionUTC() const;
@@ -128,6 +129,7 @@ private:
 	bool         m_hd44780UTC;
 
 	std::string  m_nextionPort;
+	unsigned int m_nextionSpeed;
 	unsigned int m_nextionBrightness;
 	bool         m_nextionDisplayClock;
 	bool         m_nextionUTC;

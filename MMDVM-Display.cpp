@@ -338,6 +338,7 @@ bool CMMDVMDisplay::createDisplay()
 		m_display = new CTFTSurenoo(serial, brightness, screenLayout);
 	} else if (type == "Nextion") {
 		std::string port            = m_conf.getNextionPort();
+		unsigned int speed          = m_conf.getNextionSpeed();
 		unsigned int brightness     = m_conf.getNextionBrightness();
 		bool displayClock           = m_conf.getNextionDisplayClock();
 		bool utc                    = m_conf.getNextionUTC();
@@ -346,6 +347,7 @@ bool CMMDVMDisplay::createDisplay()
 		bool tempInF                = m_conf.getTemperatureInF();
 
 		LogInfo("    Port: %s", port.c_str());
+		LogInfo("    Speed: %u", speed);
 		LogInfo("    Brightness: %u", brightness);
 		LogInfo("    Clock Display: %s", displayClock ? "yes" : "no");
 		if (displayClock)
@@ -363,24 +365,16 @@ bool CMMDVMDisplay::createDisplay()
 		case 3U:
 			LogInfo("    Screen Layout: DIY by ON7LDS");
 			break;
-		case 4U:
-			LogInfo("    Screen Layout: DIY by ON7LDS (High speed)");
-			break;
 		default:
-			LogInfo("    Screen Layout: %u (Unknown)", screenLayout);
-			break;
+			LogError("    Screen Layout: %u (Unknown)", screenLayout);
+			return false;
 		}
 
 		if (port == "modem") {
 			ISerialPort* serial = m_msp = new CModemSerialPort(m_conf.getMQTTHostName());
 			m_display = new CNextion(serial, brightness, displayClock, utc, idleBrightness, screenLayout, tempInF);
 		} else {
-			unsigned int baudrate = 9600U;
-			if (screenLayout == 4U)
-				baudrate = 115200U;
-
-			LogInfo("    Display baudrate: %u ", baudrate);
-			ISerialPort* serial = new CUARTController(port, baudrate);
+			ISerialPort* serial = new CUARTController(port, speed);
 			m_display = new CNextion(serial, brightness, displayClock, utc, idleBrightness, screenLayout, tempInF);
 		}
 	} else if (type == "LCDproc") {

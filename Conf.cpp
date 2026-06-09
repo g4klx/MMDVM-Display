@@ -68,7 +68,8 @@ m_hd44780PWMBright(),
 m_hd44780PWMDim(),
 m_hd44780DisplayClock(false),
 m_hd44780UTC(false),
-m_nextionPort("/dev/ttyAMA0"),
+m_nextionPort("/dev/ttyUSB0"),
+m_nextionSpeed(9600U),
 m_nextionBrightness(50U),
 m_nextionDisplayClock(false),
 m_nextionUTC(false),
@@ -226,6 +227,8 @@ bool CConf::read()
 		} else if (section == SECTION::NEXTION) {
 			if (::strcmp(key, "Port") == 0)
 				m_nextionPort = value;
+			else if (::strcmp(key, "Speed") == 0)
+				m_nextionSpeed = (unsigned int)::atoi(value);
 			else if (::strcmp(key, "Brightness") == 0)
 				m_nextionIdleBrightness = m_nextionBrightness = (unsigned int)::atoi(value);
 			else if (::strcmp(key, "DisplayClock") == 0)
@@ -413,6 +416,11 @@ bool CConf::getHD44780UTC() const
 std::string CConf::getNextionPort() const
 {
 	return m_nextionPort;
+}
+
+unsigned int CConf::getNextionSpeed() const
+{
+	return m_nextionSpeed;
 }
 
 unsigned int CConf::getNextionBrightness() const

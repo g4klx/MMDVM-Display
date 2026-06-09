@@ -26,15 +26,10 @@
 #include <ctime>
 #include <clocale>
 
-#define LAYOUT_COMPAT_MASK	(7 << 0) // compatibility for old setting
 #define LAYOUT_TA_ENABLE	(1 << 4) // enable Talker Alias (TA) display
 #define LAYOUT_TA_COLOUR	(1 << 5) // TA display with font colour change
 #define LAYOUT_TA_FONTSIZE	(1 << 6) // TA display with font size change
-#define LAYOUT_DIY		(1 << 7) // use ON7LDS-DIY layout
-
-// bit[3:2] is used in Display.cpp to set connection speed for LCD panel.
-// 00:low, others:high-speed. bit[2] is overlapped with LAYOUT_COMPAT_MASK.
-#define LAYOUT_HIGHSPEED	(3 << 2)
+#define LAYOUT_DIY			(1 << 7) // use ON7LDS-DIY layout
 
 const unsigned int MAX_REPLY_LENGTH = 9U;
 
@@ -67,30 +62,25 @@ m_waiting(false),
 m_waitingTimer(1000U, 0U, 500U)
 {
 	assert(serial != nullptr);
-	assert(brightness >= 0U && brightness <= 100U);
+	assert((brightness >= 0U) && (brightness <= 100U));
+	assert((screenLayout == 0U) || (screenLayout == 2U) || (screenLayout == 3U));
 
 	static const unsigned int feature_set[] = {
 		0,				// 0: G4KLX
-		0,				// 1: (reserved, low speed)
+		0,				// 1: unused
 						// 2: ON7LDS
 		LAYOUT_TA_ENABLE | LAYOUT_TA_COLOUR | LAYOUT_TA_FONTSIZE,
-		LAYOUT_TA_ENABLE | LAYOUT_DIY,	// 3: ON7LDS-DIY
-		LAYOUT_TA_ENABLE | LAYOUT_DIY,	// 4: ON7LDS-DIY (high speed)
-		0,				// 5: (reserved, high speed)
-		0,				// 6: (reserved, high speed)
-		0,				// 7: (reserved, high speed)
+		LAYOUT_TA_ENABLE | LAYOUT_DIY	// 3: ON7LDS-DIY
 	};
 
-	if (screenLayout & ~LAYOUT_COMPAT_MASK)
-		m_screenLayout = screenLayout & ~LAYOUT_COMPAT_MASK;
-	else
-		m_screenLayout = feature_set[screenLayout];
+	m_screenLayout = feature_set[screenLayout];
 
 	m_reply = new unsigned char[MAX_REPLY_LENGTH];
 }
 
 CNextion::~CNextion()
 {
+	delete   m_serial;
 	delete[] m_reply;
 }
 
@@ -184,7 +174,7 @@ void CNextion::setIdleInt()
 		sendCommand("t32.txt=\"?\"");
 	}
 
-	// sendCommand("t32.txt=\"" + m_location + "\"");
+	sendCommand("t31.txt=\"" + m_location + "\"");
 
 	sendCommand("t1.txt=\"MMDVM IDLE\"");
 	sendCommandAction(11U);
