@@ -38,8 +38,7 @@ CDisplay(),
 m_callsign(),
 m_id(0U),
 m_duplex(false),
-m_ipV4(),
-m_ipV6(),
+m_ipAddress(),
 m_temperature(-1.0F),
 m_frequency(-1.0F),
 m_load(-1.0F),
@@ -179,10 +178,8 @@ void CNextion::setIdleInt()
 	sendCommand("t1.txt=\"MMDVM IDLE\"");
 	sendCommandAction(11U);
 
-	if (!m_ipV4.empty())
-		::sprintf(command, "t3.txt=\"%s\"", m_ipV4.c_str());
-	else if (!m_ipV6.empty())
-		::sprintf(command, "t3.txt=\"%s\"", m_ipV6.c_str());
+	if (!m_ipAddress.empty())
+		::sprintf(command, "t3.txt=\"%s\"", m_ipAddress.c_str());
 	else
 		::sprintf(command, "t3.txt=\"(ip unknown)\"");
 	sendCommand(command);
@@ -242,10 +239,8 @@ void CNextion::setQuitInt()
 		sendCommand(command);
 	}
 
-	if (!m_ipV4.empty())
-		::sprintf(command, "t3.txt=\"%s\"", m_ipV4.c_str());
-	else if (!m_ipV6.empty())
-		::sprintf(command, "t3.txt=\"%s\"", m_ipV6.c_str());
+	if (!m_ipAddress.empty())
+		::sprintf(command, "t3.txt=\"%s\"", m_ipAddress.c_str());
 	else
 		::sprintf(command, "t3.txt=\"(ip unknown)\"");
 	sendCommand(command);
@@ -793,14 +788,19 @@ void CNextion::writeInfoInt(unsigned int rxFrequency, unsigned int txFrequency, 
 
 void CNextion::writeIPInt(const std::string& name, const std::string& ipV4, const std::string& ipV6)
 {
+	std::string address;
+
 	if (!ipV4.empty())
-		m_ipV4 = ipV4;
+		address = ipV4;
+	else if (!ipV6.empty())
+		address = ipV6;
 
-	if (!ipV6.empty())
-		m_ipV6 = ipV6;
+	if (address != m_ipAddress) {
+		m_ipAddress = address;
 
-	if (m_mode == MODE_IDLE)
-		setIdle();
+		if (m_mode == MODE_IDLE)
+			setIdle();
+	}
 }
 
 void CNextion::clockInt(unsigned int ms)

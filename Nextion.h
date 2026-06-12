@@ -92,8 +92,7 @@ private:
 	std::string    m_callsign;
 	unsigned int   m_id;
 	bool           m_duplex;
-	std::string    m_ipV4;
-	std::string    m_ipV6;
+	std::string    m_ipAddress;
 	float          m_temperature;
 	float          m_frequency;
 	float          m_load;

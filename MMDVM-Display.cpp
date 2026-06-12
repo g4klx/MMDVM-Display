@@ -977,9 +977,6 @@ void CMMDVMDisplay::parseAddresses(const nlohmann::json& json)
 
 			m_display->writeIP(name, ipV4, ipV6);
 
-			// Stop polling the Host IP data
-			m_addrTimer.stop();
-
 			return;
 		}
 	}
