@@ -35,7 +35,7 @@ The wiring ist as follows:
   VCC 15  --------   2 +5V
   GND 16  --------   6 GND
 
-The relevant part in the MMDVM.ini is like outlined below.
+The relevant part in the MMDVM-Display.ini is like outlined below.
 
 [HD44780]
 Rows=4
@@ -45,26 +45,33 @@ Columns=20
 # rs, strb, d0, d1, d2, d3
 Pins=11,10,0,1,2,3
 
-To compile MMDVMHost with support for the HD44780 use the following commands.
+To compile MMDVM-Display with support for the HD44780 edit the Makefile and identify
+the lines that control the compilation options you need for your hardware, and uncomment the
+lines that match yours, be deleting the # symbol at the beginning of the lines. The hardware
+supported is:
+
+- HD44780 compatible display.
+
+- Adafruit i2c 16 x 2 RGB LCD Pi Plate
+
+- HD44780 connected via a PCF8574 8-bit GPIO expander IC
+
+All of these require access to the WiringPi library in order to build and run.
+
+Once that is done, use the following commands:
 
 # make clean
-# make -f Makefile.Pi.HD44780
-
-Other HD44780 variations exist that connect via I2C. Support is also via 
-wiringPi, but to compile for each I2C device requires a different Makefile 
-depending on the IC attached to the LCD.
+# make
 
                            - ADAFRUIT RGB LCD SHIELD -
 
 The Adafruit RGB LCD Shield is available from https://www.adafruit.com/product/714
-I2C is  via the MCP23017 IC and is enabled with Makefile.Pi.Adafruit. The 
-I2C device address in MMDVM.ini should be set to 0x20.
+I2C is  via the MCP23017 IC. The I2C device address in MMDVM-Display.ini should be set to 0x20.
 
                                  - PCF8574 IC -
 
 HD44780 LCDs connected via a PCF8574 Remote 8-Bit I/O Expander are available on
-eBay for very little money! This IC uses Makefile.Pi.PCF8574 and the I2C
-device address should be set to 0x27.
+eBay for very little money! The I2C device address should be set to 0x27.
 
                                    - BEWARE -
 
@@ -80,5 +87,5 @@ https://learn.sparkfun.com/tutorials/raspberry-pi-spi-and-i2c-tutorial#i2c-on-pi
 
 Whilst connected in 4-bit mode or via the PCF8574 IC, the LED backlight can be
 wired for control via PWM.  Connect the backlight +ve pin to any spare GPIO pin 
-and configure MMDVM.ini as appropriate. By default, wiringPi pin 21 is 
+and configure MMDVM-Display.ini as appropriate. By default, wiringPi pin 21 is 
 configured.
