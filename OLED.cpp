@@ -183,7 +183,8 @@ m_displayScroll(displayScroll),
 m_displayRotate(displayRotate),
 m_displayLogoScreensaver(displayLogoScreensaver),
 m_ipaddress(),
-m_temperature(0.0F),
+m_tempC(0.0F),
+m_tempF(0.0F),
 m_display()
 {
 }
@@ -252,12 +253,10 @@ void COLED::setIdleInt()
 		m_display.printf("%s", m_ipaddress.c_str());
 
 		// Display temperature
-		if (m_temperature > 0.0F) {
-			// Convert to Fahrenheit
-			float tempFahrenheit = (m_temperature * 1.8F) + 32.0F;
+		if (m_tempC > 0.0F) {
 			m_display.setCursor(0, OLED_LINE5);
 			m_display.setTextSize(1);
-			m_display.printf("Temp: %.0fF / %.0fC ", tempFahrenheit, tempCelsius);
+			m_display.printf("Temp: %.0fF / %.0fC ", m_tempF, m_tempC);
 		}
 	}
 
@@ -639,12 +638,10 @@ void COLED::clearCWInt()
 	m_display.printf("%s", m_ipaddress.c_str());
 
 	// Display temperature
-	if (m_temperature > 0.0F) {
-		// Convert to Fahrenheit
-		float tempFahrenheit = (m_temperature * 1.8F) + 32.0F;
+	if (m_tempC > 0.0F) {
 		m_display.setCursor(0, OLED_LINE5);
 		m_display.setTextSize(1);
-		m_display.printf("Temp: %.0fF / %.0fC ", tempFahrenheit, tempCelsius);
+		m_display.printf("Temp: %.0fF / %.0fC ", m_tempF, m_tempC);
 	}
 
 	if (m_displayScroll)
@@ -707,7 +704,8 @@ void COLED::OLED_statusbar()
 
 void COLED::writeCPUInt(float temperature, float frequency, float load)
 {
-	m_temperature = temperature;
+	m_tempC = temperature;
+	m_tempF = (temperature * 1.8F) + 32.0F;
 }
 
 void COLED::writeIPInt(const std::string& name, const std::string& ipV4, const std::string& ipV6)

@@ -98,7 +98,8 @@ private:
 	bool          m_displayRotate;
 	bool          m_displayLogoScreensaver;
 	std::string   m_ipaddress;
-	float         m_temperature;
+	float         m_tempC;
+	float         m_tempF;
 	ArduiPi_OLED  m_display;
 
 	float readTemperature(const std::string& filePath);
