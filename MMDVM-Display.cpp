@@ -1015,12 +1015,12 @@ void CMMDVMDisplay::parseHostConfig(const nlohmann::json& json)
 			m_display->writeGeneral(callsign, id, duplex);
 		}
 
-		if (json.contains("Info") && json["Info"].is_object()) {
+		if (json.contains("Modem") && json["Modem"].is_object()) {
 			unsigned int rxFrequency = 0U;
 			unsigned int txFrequency = 0U;
 			std::string location = "?";
 
-			const nlohmann::json j = json["Info"];
+			const nlohmann::json j = json["Modem"];
 
 			if (j.contains("RXFrequency")) {
 				// Frequency is in Hz
@@ -1034,10 +1034,10 @@ void CMMDVMDisplay::parseHostConfig(const nlohmann::json& json)
 				txFrequency = std::stoi(freq);
 			}
 
-			if (j.contains("Location")) {
-				std::string loc = j["Location"];
-				location = loc;
-			}
+			// if (j.contains("Location")) {
+			//	std::string loc = j["Location"];
+			//	location = loc;
+			// }
 
 			m_display->writeInfo(rxFrequency, txFrequency, location);
 		}

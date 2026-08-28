@@ -35,9 +35,13 @@
 
 CMQTTConnection* m_mqtt = nullptr;
 
+const unsigned int BUFFER_LENGTH = 5000U;
+
 static unsigned int m_mqttLevel = 2U;
 
 static unsigned int m_displayLevel = 2U;
+
+static char* m_buffer = nullptr;
 
 static char LEVELS[] = " DMIWEF";
 
@@ -45,6 +49,8 @@ void LogInitialise(unsigned int displayLevel, unsigned int mqttLevel)
 {
 	m_mqttLevel    = mqttLevel;
 	m_displayLevel = displayLevel;
+
+	m_buffer = new char[BUFFER_LENGTH];
 }
 
 void LogFinalise()
@@ -54,39 +60,41 @@ void LogFinalise()
 		delete m_mqtt;
 		m_mqtt = nullptr;
 	}
+
+	delete[] m_buffer;
+	m_buffer = nullptr;
 }
 
 void Log(unsigned int level, const char* fmt, ...)
 {
 	assert(fmt != nullptr);
 
-	char buffer[501U];
 #if defined(_WIN32) || defined(_WIN64)
 	SYSTEMTIME st;
 	::GetSystemTime(&st);
 
-	::sprintf(buffer, "%c: %04u-%02u-%02u %02u:%02u:%02u.%03u ", LEVELS[level], st.wYear, st.wMonth, st.wDay, st.wHour, st.wMinute, st.wSecond, st.wMilliseconds);
+	::sprintf(m_buffer, "%c: %04u-%02u-%02u %02u:%02u:%02u.%03u ", LEVELS[level], st.wYear, st.wMonth, st.wDay, st.wHour, st.wMinute, st.wSecond, st.wMilliseconds);
 #else
 	struct timeval now;
 	::gettimeofday(&now, nullptr);
 
 	struct tm* tm = ::gmtime(&now.tv_sec);
 
-	::sprintf(buffer, "%c: %04d-%02d-%02d %02d:%02d:%02d.%03lld ", LEVELS[level], tm->tm_year + 1900, tm->tm_mon + 1, tm->tm_mday, tm->tm_hour, tm->tm_min, tm->tm_sec, now.tv_usec / 1000LL);
+	::sprintf(m_buffer, "%c: %04d-%02d-%02d %02d:%02d:%02d.%03lld ", LEVELS[level], tm->tm_year + 1900, tm->tm_mon + 1, tm->tm_mday, tm->tm_hour, tm->tm_min, tm->tm_sec, now.tv_usec / 1000LL);
 #endif
 
 	va_list vl;
 	va_start(vl, fmt);
 
-	::vsnprintf(buffer + ::strlen(buffer), 500 - ::strlen(buffer), fmt, vl);
+	::vsnprintf(m_buffer + ::strlen(m_buffer), BUFFER_LENGTH - ::strlen(m_buffer), fmt, vl);
 
 	va_end(vl);
 
 	if (m_mqtt != nullptr && level >= m_mqttLevel && m_mqttLevel != 0U)
-		m_mqtt->publish("log", buffer);
+		m_mqtt->publish("log", m_buffer);
 
 	if (level >= m_displayLevel && m_displayLevel != 0U) {
-		::fprintf(stdout, "%s\n", buffer);
+		::fprintf(stdout, "%s\n", m_buffer);
 		::fflush(stdout);
 	}
 
