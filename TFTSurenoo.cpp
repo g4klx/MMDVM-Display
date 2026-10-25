@@ -146,7 +146,10 @@ void CTFTSurenoo::setIdleInt()
 {
 	setModeLine(STR_MMDVM);
 
-	::snprintf(m_temp, sizeof(m_temp), "%s / %u", m_callsign.c_str(), m_id);
+	if (m_id != 0U)
+		::snprintf(m_temp, sizeof(m_temp), "%s / %u", m_callsign.c_str(), m_id);
+	else
+		::snprintf(m_temp, sizeof(m_temp), "%s", m_callsign.c_str());
 	setStatusLine(statusLineNo(0), m_temp);
 	setStatusLine(statusLineNo(1), "IDLE");
 
@@ -354,6 +357,9 @@ void CTFTSurenoo::close()
 
 void CTFTSurenoo::writeGeneralInt(const std::string& callsign, unsigned int id, bool duplex)
 {
+	if ((callsign == m_callsign) && (id == m_id) && (duplex == m_duplex))
+		return;
+
 	m_callsign = callsign;
 	m_id       = id;
 	m_duplex   = duplex;

@@ -528,9 +528,26 @@ void CLCDproc::clearCWInt()
 
 void CLCDproc::writeGeneralInt(const std::string& callsign, unsigned int id, bool duplex)
 {
+	bool changed = (callsign != m_callsign) || (id != m_id);
+
 	m_callsign = callsign;
 	m_id       = id;
 	m_duplex   = duplex;
+
+	if (changed && m_screensDefined)
+		writeGeneralWidgets();
+}
+
+void CLCDproc::writeGeneralWidgets()
+{
+	char id[20U];
+	if (m_id != 0U)
+		::sprintf(id, "%u", m_id);
+	else
+		id[0U] = '\0';
+
+	socketPrintf(m_socketfd, "widget_set Status Callsign 1 1 \"%s\"", m_callsign.c_str());
+	socketPrintf(m_socketfd, "widget_set Status DMRNumber %u 1 \"%s\"", m_cols - 7, id);
 }
 
 void CLCDproc::clockInt(unsigned int ms)
@@ -726,8 +743,7 @@ void CLCDproc::defineScreens()
 	socketPrintf(m_socketfd, "widget_add Status Time string");
 	socketPrintf(m_socketfd, "widget_add Status Date string");
 
-	socketPrintf(m_socketfd, "widget_set Status Callsign 1 1 %s", m_callsign.c_str());
-	socketPrintf(m_socketfd, "widget_set Status DMRNumber %u 1 %u", m_cols - 7, m_id);
+	writeGeneralWidgets();
 	socketPrintf(m_socketfd, "widget_set Status Title 1 %u MMDVM", m_rows);
 	socketPrintf(m_socketfd, "widget_set Status Status %u %u Idle", m_cols - 3, m_rows);
 

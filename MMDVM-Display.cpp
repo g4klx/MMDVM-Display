@@ -44,6 +44,7 @@
 #include <vector>
 
 #include <cstdlib>
+#include <cerrno>
 
 #if !defined(_WIN32) && !defined(_WIN64)
 #include <sys/types.h>
@@ -985,34 +986,65 @@ void CMMDVMDisplay::parseAddresses(const nlohmann::json& json)
 	}
 }
 
+// Read an unsigned number from a Host Config field, which may be a string or
+// a number. A missing, blank or non-numeric field (an unconfigured host) gives
+// false and leaves value alone.
+static bool getUnsigned(const nlohmann::json& j, const char* key, unsigned int& value)
+{
+	if (!j.contains(key))
+		return false;
+
+	const nlohmann::json& field = j[key];
+
+	if (field.is_number_unsigned()) {
+		value = field.get<unsigned int>();
+		return true;
+	}
+
+	if (!field.is_string())
+		return false;
+
+	const std::string text = field.get<std::string>();
+	if (text.empty())
+		return false;
+
+	char* end = nullptr;
+	errno = 0;
+	unsigned long n = ::strtoul(text.c_str(), &end, 10);
+	if ((errno != 0) || (*end != '\0') || (text[0] == '-') || (n > 0xFFFFFFFFUL))
+		return false;
+
+	value = (unsigned int)n;
+	return true;
+}
+
 void CMMDVMDisplay::parseHostConfig(const nlohmann::json& json)
 {
 	assert(m_display != nullptr);
+
+	// Until the host has an Id and its frequencies, keep polling, so that the
+	// display picks them up once the host is configured.
+	bool complete = true;
 
 	try {
 		if (json.contains("General") && json["General"].is_object()) {
 			std::string callsign;
 			unsigned int id = 0U;
-			bool duplex = false;
+			unsigned int duplex = 0U;
 
 			const nlohmann::json j = json["General"];
 
-			if (j.contains("Callsign")) {
-				std::string temp = j["Callsign"];
-				callsign = temp;
+			if (j.contains("Callsign") && j["Callsign"].is_string())
+				callsign = j["Callsign"].get<std::string>();
+
+			if (!getUnsigned(j, "Id", id) || (id == 0U)) {
+				LogDebug("The host has no Id yet");
+				complete = false;
 			}
 
-			if (j.contains("Id")) {
-				std::string temp = j["Id"];
-				id = std::stoi(temp);
-			}
+			getUnsigned(j, "Duplex", duplex);
 
-			if (j.contains("Duplex")) {
-				std::string temp = j["Duplex"];
-				duplex = (std::stoi(temp) == 1);
-			}
-
-			m_display->writeGeneral(callsign, id, duplex);
+			m_display->writeGeneral(callsign, id, duplex == 1U);
 		}
 
 		if (json.contains("Modem") && json["Modem"].is_object()) {
@@ -1022,16 +1054,11 @@ void CMMDVMDisplay::parseHostConfig(const nlohmann::json& json)
 
 			const nlohmann::json j = json["Modem"];
 
-			if (j.contains("RXFrequency")) {
-				// Frequency is in Hz
-				std::string freq = j["RXFrequency"];
-				rxFrequency = std::stoi(freq);
-			}
-
-			if (j.contains("TXFrequency")) {
-				// Frequency is in Hz
-				std::string freq = j["TXFrequency"];
-				txFrequency = std::stoi(freq);
+			// Frequencies are in Hz
+			if (!getUnsigned(j, "RXFrequency", rxFrequency) || (rxFrequency == 0U) ||
+			    !getUnsigned(j, "TXFrequency", txFrequency) || (txFrequency == 0U)) {
+				LogDebug("The host has no frequencies yet");
+				complete = false;
 			}
 
 			// if (j.contains("Location")) {
@@ -1041,13 +1068,15 @@ void CMMDVMDisplay::parseHostConfig(const nlohmann::json& json)
 
 			m_display->writeInfo(rxFrequency, txFrequency, location);
 		}
-
-		// Stop polling the Host config data
-		m_confTimer.stop();
 	}
-	catch (nlohmann::json::exception& ex) {
+	catch (std::exception& ex) {
 		LogError("Error parsing Host Config - %s", ex.what());
+		return;
 	}
+
+	// Stop polling the Host config data
+	if (complete)
+		m_confTimer.stop();
 }
 
 void CMMDVMDisplay::pollHostConfig()

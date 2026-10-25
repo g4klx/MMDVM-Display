@@ -310,7 +310,10 @@ void CHD44780::setIdleInt()
 	::lcdPosition(m_fd, 0, 0);
 	::lcdPrintf(m_fd, "%-6s", m_callsign.c_str());
 	::lcdPosition(m_fd, m_cols - 7, 0);
-	::lcdPrintf(m_fd, "%7u", m_id);
+	if (m_id != 0U)
+		::lcdPrintf(m_fd, "%7u", m_id);
+	else
+		::lcdPuts(m_fd, "       ");
 
 	// Print MMDVM and Idle on bottom row for all screen sizes
 	::lcdPosition(m_fd, 0, m_rows - 1);
@@ -1035,9 +1038,15 @@ void CHD44780::clearCWInt()
 
 void CHD44780::writeGeneralInt(const std::string& callsign, unsigned int id, bool duplex)
 {
+	bool changed = (callsign != m_callsign) || (id != m_id);
+
 	m_callsign = callsign;
 	m_id       = id;
 	m_duplex   = duplex;
+
+	// The clock only runs while idle
+	if (changed && m_clockDisplayTimer.isRunning())
+		setIdleInt();
 }
 
 void CHD44780::clockInt(unsigned int ms)

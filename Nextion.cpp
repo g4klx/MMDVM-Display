@@ -113,13 +113,19 @@ void CNextion::setIdleInt()
 		sendCommand(command);
 	}
 
-	::sprintf(command, "t0.txt=\"%s/%u\"", m_callsign.c_str(), m_id);
+	if (m_id != 0U)
+		::sprintf(command, "t0.txt=\"%s/%u\"", m_callsign.c_str(), m_id);
+	else
+		::sprintf(command, "t0.txt=\"%s\"", m_callsign.c_str());
 	sendCommand(command);
 
 	if (m_screenLayout & LAYOUT_DIY) {
 		::sprintf(command, "t4.txt=\"%s\"", m_callsign.c_str());
 		sendCommand(command);
-		::sprintf(command, "t5.txt=\"%u\"", m_id);
+		if (m_id != 0U)
+			::sprintf(command, "t5.txt=\"%u\"", m_id);
+		else
+			::sprintf(command, "t5.txt=\"\"");
 		sendCommand(command);
 		sendCommandAction(17U);
 
@@ -776,9 +782,13 @@ void CNextion::writeCPUInt(float temperature, float frequency, float load)
 
 void CNextion::writeInfoInt(unsigned int rxFrequency, unsigned int txFrequency, const std::string& location)
 {
-	if ((rxFrequency != m_rxFrequency) || (txFrequency != m_txFrequency)) {
-		m_rxFrequency = float(rxFrequency) / 1000000.0F;
-		m_txFrequency = float(txFrequency) / 1000000.0F;
+	// An unknown frequency (0) is shown as "?"
+	float rx = (rxFrequency != 0U) ? float(rxFrequency) / 1000000.0F : -1.0F;
+	float tx = (txFrequency != 0U) ? float(txFrequency) / 1000000.0F : -1.0F;
+
+	if ((rx != m_rxFrequency) || (tx != m_txFrequency)) {
+		m_rxFrequency = rx;
+		m_txFrequency = tx;
 		m_location    = location;
 
 		if (m_mode == MODE_IDLE)

@@ -100,6 +100,7 @@ private:
 	int  socketPrintf(int fd, const char* format, ...);
 #endif
 	void defineScreens();
+	void writeGeneralWidgets();
 };
 
 #endif
