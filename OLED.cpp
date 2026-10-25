@@ -176,6 +176,7 @@ CDisplay(),
 m_callsign(),
 m_id(0U),
 m_duplex(false),
+m_mode(MODE_QUIT),
 m_displayType(displayType),
 m_displayBrightness(displayBrightness),
 m_displayInvert(displayInvert),
@@ -710,10 +711,21 @@ void COLED::writeCPUInt(float temperature, float frequency, float load)
 
 void COLED::writeIPInt(const std::string& name, const std::string& ipV4, const std::string& ipV6)
 {
+	std::string address;
+
 	if (!ipV4.empty())
-		m_ipaddress = ipV4;
+		address = ipV4;
 	else if (!ipV6.empty())
-		m_ipaddress = ipV6;
+		address = ipV6;
+
+	if (address.empty() || (address == m_ipaddress))
+		return;
+
+	m_ipaddress = address;
+
+	// The idle screen shows the address: redraw it now, rather than after the next call
+	if (m_mode == MODE_IDLE)
+		setIdle();
 }
 
 #endif
