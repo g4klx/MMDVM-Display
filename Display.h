@@ -81,6 +81,8 @@ public:
 	void writeInfo(unsigned int rxFrequency, unsigned int txFrequency, const std::string& location);
 	void writeIP(const std::string& name, const std::string& ipV4, const std::string& ipV6);
 
+	void writeCommand(const std::string& command);
+
 	virtual void close() = 0;
 
 	void clock(unsigned int ms);
@@ -132,6 +134,8 @@ protected:
 	virtual void writeCPUInt(float temperature, float frequency, float load);
 	virtual void writeInfoInt(unsigned int rxFrequency, unsigned int txFrequency, const std::string& location);
 	virtual void writeIPInt(const std::string& name, const std::string& ipV4, const std::string& ipV6);
+
+	virtual void writeCommandInt(const std::string& command);
 
 	virtual void clockInt(unsigned int ms);
 

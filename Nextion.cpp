@@ -16,6 +16,7 @@
  *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
+#include "MQTTConnection.h"
 #include "Nextion.h"
 #include "Utils.h"
 #include "Log.h"
@@ -26,12 +27,15 @@
 #include <ctime>
 #include <clocale>
 
+extern CMQTTConnection* m_mqtt;
+
 #define LAYOUT_TA_ENABLE	(1 << 4) // enable Talker Alias (TA) display
 #define LAYOUT_TA_COLOUR	(1 << 5) // TA display with font colour change
 #define LAYOUT_TA_FONTSIZE	(1 << 6) // TA display with font size change
 #define LAYOUT_DIY			(1 << 7) // use ON7LDS-DIY layout
 
-const unsigned int MAX_REPLY_LENGTH = 9U;
+// The longest message from the screen kept, without its FF FF FF
+const unsigned int MAX_REPLY_LENGTH = 250U;
 
 // Instructions sent together, in bytes: well inside the buffers of the
 // Nextion and of a modem passing them on.
@@ -61,6 +65,7 @@ m_displayTempInF(displayTempInF),
 m_output(2000U, "Nextion buffer"),
 m_mutex(),
 m_reply(nullptr),
+m_replyLength(0U),
 m_waiting(false),
 m_pending(0U),
 m_redrawIdle(false),
@@ -867,52 +872,27 @@ void CNextion::clockInt(unsigned int ms)
 		m_waitingTimer.stop();
 	}
 
+	// Collect each message from the screen up to its FF FF FF.
 	unsigned char c;
-	unsigned int len;
-	while ((len = m_serial->read(&c, 1U)) == 1U) {
-		::memmove(m_reply + 1U, m_reply + 0U, MAX_REPLY_LENGTH - 1U);
-		m_reply[0U] = c;
+	while (m_serial->read(&c, 1U) == 1U) {
+		if (m_replyLength < MAX_REPLY_LENGTH)
+			m_reply[m_replyLength] = c;
+		m_replyLength++;
 
-		// Do we have a valid reply?
-		if (m_reply[0U] == 0xFFU && m_reply[1U] == 0xFFU && m_reply[2U] == 0xFFU) {
-			switch (m_reply[3U]) {
-				case 0x00U:	// Invalid instruction
-				case 0x02U:	// Invalid component ID
-				case 0x03U:	// Invalid page ID
-				case 0x04U:	// Invalid picture ID
-				case 0x05U:	// Invalid font ID
-				case 0x06U:	// Invalid file operation
-				case 0x09U:	// Invalid CRC
-				case 0x11U:	// Invalid baud rate setting
-				case 0x12U:	// Invalid waveform ID or channel number
-				case 0x1BU:	// Invalid variable operation
-				case 0x1CU:	// Assignment failed to assign
-				case 0x1DU:	// EEPROM operation failed
-				case 0x1EU:	// Invalid quantity of parameters
-				case 0x1FU:	// IO operation failed
-				case 0x20U:	// Escape character invalid
-				case 0x23U:	// Variable name too long
-				case 0x24U:	// Serial buffer overflow
-					LogWarning("Nextion error response - 0x%02X", m_reply[3U]);
-					break;
-				case 0x1AU:	// Invalid variable name or operation
-					LogDebug("Nextion error response - 0x%02X", m_reply[3U]);
-					break;
-				case 0x01U:	// Instruction successful
-					break;
-				default:	// Unhandled response
-					LogWarning("Unknown Nextion response - 0x%02X", m_reply[3U]);
-					break;
+		if ((m_replyLength >= 3U) && (c == 0xFFU) && (m_reply[m_replyLength - 2U] == 0xFFU) && (m_reply[m_replyLength - 3U] == 0xFFU)) {
+			unsigned int length = m_replyLength - 3U;
+			m_replyLength = 0U;
+
+			if (length > MAX_REPLY_LENGTH) {
+				LogWarning("Nextion message too long - %u bytes", length);
+				continue;
 			}
+
+			processReply(m_reply, length);
 
 			// The last reply to what was sent: send more
-			if (m_pending > 0U)
-				m_pending--;
-			if (m_pending == 0U) {
-				m_waiting = false;
-				m_waitingTimer.stop();
+			if ((length == 1U) && !m_waiting)
 				break;
-			}
 		}
 	}
 
@@ -950,6 +930,73 @@ void CNextion::clockInt(unsigned int ms)
 			m_waitingTimer.start();
 		}
 	}
+}
+
+void CNextion::processReply(const unsigned char* data, unsigned int length)
+{
+	if (length == 1U) {
+		switch (data[0U]) {
+			case 0x00U:	// Invalid instruction
+			case 0x02U:	// Invalid component ID
+			case 0x03U:	// Invalid page ID
+			case 0x04U:	// Invalid picture ID
+			case 0x05U:	// Invalid font ID
+			case 0x06U:	// Invalid file operation
+			case 0x09U:	// Invalid CRC
+			case 0x11U:	// Invalid baud rate setting
+			case 0x12U:	// Invalid waveform ID or channel number
+			case 0x1BU:	// Invalid variable operation
+			case 0x1CU:	// Assignment failed to assign
+			case 0x1DU:	// EEPROM operation failed
+			case 0x1EU:	// Invalid quantity of parameters
+			case 0x1FU:	// IO operation failed
+			case 0x20U:	// Escape character invalid
+			case 0x23U:	// Variable name too long
+			case 0x24U:	// Serial buffer overflow
+				LogWarning("Nextion error response - 0x%02X", data[0U]);
+				break;
+			case 0x1AU:	// Invalid variable name or operation
+				LogDebug("Nextion error response - 0x%02X", data[0U]);
+				break;
+			case 0x01U:	// Instruction successful
+				break;
+			default:	// Unhandled response
+				LogWarning("Unknown Nextion response - 0x%02X", data[0U]);
+				break;
+		}
+
+		if (m_pending > 0U)
+			m_pending--;
+		if (m_pending == 0U) {
+			m_waiting = false;
+			m_waitingTimer.stop();
+		}
+		return;
+	}
+
+	// A command from the screen (ON7LDS layouts): 0x2A, a command byte
+	// and its parameters. It is passed on as it came, without the 0x2A,
+	// for another program to act on; the screen's buttons run nothing here.
+	if ((length >= 2U) && (data[0U] == 0x2AU)) {
+		LogMessage("Nextion command 0x%02X", data[1U]);
+
+		if (m_mqtt != nullptr)
+			m_mqtt->publish("nextion-out", data + 1U, length - 1U);
+		return;
+	}
+
+	// Touch events, page numbers, start-up and sleep notices
+	LogDebug("Nextion message 0x%02X, %u bytes", data[0U], length);
+}
+
+void CNextion::writeCommandInt(const std::string& command)
+{
+	if (command.empty() || (command.size() > 196U)) {
+		LogWarning("Invalid Nextion command from MQTT, %u bytes", (unsigned int)command.size());
+		return;
+	}
+
+	sendCommand(command);
 }
 
 void CNextion::close()
