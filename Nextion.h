@@ -113,11 +113,13 @@ private:
 	unsigned char* m_reply;
 	bool           m_waiting;
 	unsigned int   m_pending;
+	bool           m_redrawIdle;
 	CTimer         m_waitingTimer;
 
 	void sendCommand(const std::string& command);
 	void sendCommandAction(unsigned int status);
 	void sendCPU();
+	void redrawIdle();
 };
 
 #endif

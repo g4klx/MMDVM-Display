@@ -63,6 +63,7 @@ m_mutex(),
 m_reply(nullptr),
 m_waiting(false),
 m_pending(0U),
+m_redrawIdle(false),
 m_waitingTimer(1000U, 0U, 500U)
 {
 	assert(serial != nullptr);
@@ -107,6 +108,8 @@ bool CNextion::open()
 
 void CNextion::setIdleInt()
 {
+	m_redrawIdle = false;
+
 	// a few bits borrowed from Lieven De Samblanx ON7LDS, NextionDriver
 	char command[100U];
 
@@ -741,8 +744,7 @@ void CNextion::writeGeneralInt(const std::string& callsign, unsigned int id, boo
 		m_id       = id;
 		m_duplex   = duplex;
 
-		if (m_mode == MODE_IDLE)
-			setIdle();
+		redrawIdle();
 	}
 }
 
@@ -806,8 +808,7 @@ void CNextion::writeInfoInt(unsigned int rxFrequency, unsigned int txFrequency, 
 		m_txFrequency = tx;
 		m_location    = location;
 
-		if (m_mode == MODE_IDLE)
-			setIdle();
+		redrawIdle();
 	}
 }
 
@@ -823,8 +824,7 @@ void CNextion::writeIPInt(const std::string& name, const std::string& ipV4, cons
 	if (address != m_ipAddress) {
 		m_ipAddress = address;
 
-		if (m_mode == MODE_IDLE)
-			setIdle();
+		redrawIdle();
 	}
 }
 
@@ -855,6 +855,13 @@ void CNextion::clockInt(unsigned int ms)
 		}
 
 		m_clockDisplayTimer.start(); // restart the clock display timer
+	}
+
+	// Settings that came together are drawn together.
+	if (m_redrawIdle) {
+		m_redrawIdle = false;
+		if (m_mode == MODE_IDLE)
+			setIdle();
 	}
 
 	// Timeout stale waits — over MQTT, responses can be lost or delayed.
@@ -970,12 +977,25 @@ void CNextion::sendCommandAction(unsigned int status)
 	sendCommand("click S0,1");
 }
 
+void CNextion::redrawIdle()
+{
+	if (m_mode == MODE_IDLE)
+		m_redrawIdle = true;
+}
+
 void CNextion::sendCommand(const std::string& command)
 {
 	unsigned char len = (unsigned char)command.size();
 	unsigned char c = len + 3U;
 
 	m_mutex.lock();
+
+	// A whole instruction or none: a part would garble every one after it.
+	if (!m_output.hasSpace(len + 4U)) {
+		m_mutex.unlock();
+		LogWarning("Nextion buffer full, instruction dropped");
+		return;
+	}
 
 	m_output.addData(&c, 1U);
 	m_output.addData((unsigned char*)command.c_str(), len);
