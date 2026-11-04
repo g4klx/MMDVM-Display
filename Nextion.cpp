@@ -128,42 +128,25 @@ void CNextion::setIdleInt()
 			::sprintf(command, "t5.txt=\"\"");
 		sendCommand(command);
 		sendCommandAction(17U);
-
-		// CPU temperature
-		if (m_temperature != -1.0F) {
-			if (m_displayTempInF) {
-				float val = (1.8F * m_temperature) + 32.0F;
-				::sprintf(command, "t20.txt=\"%2.1f %cF\"", val, 176);
-			} else {	
-				::sprintf(command, "t20.txt=\"%2.1f %cC\"", m_temperature, 176);
-			}
-
-			sendCommand(command);
-			sendCommandAction(22U);
-		}
 	} else {
 		sendCommand("t20.txt=\"?\"");
 		sendCommandAction(17U);
 	}
-	
-	if (m_frequency != -1.0F) {
-		::sprintf(command, "t21.txt=\"%0.0f MHz\"", m_frequency / 1000.0F);
-		sendCommand(command);
-	} else {
-		sendCommand("t21.txt=\"?\"");
-	}
 
-	// TODO this is incorrect
-	if (m_load != -1.0F) {
-		::sprintf(command, "t22.txt=\"%0.2f\"", m_load);
-		sendCommand(command);
+	// The status and the address first: until they come, a layout shows
+	// its own start-up texts, and over a modem each instruction waits
+	// for the one before it.
+	sendCommand("t1.txt=\"MMDVM IDLE\"");
+	sendCommandAction(11U);
 
-		::sprintf(command, "cpuload.val=%.0f", m_load * 100.0F);
-		sendCommand(command);
-	} else {
-		sendCommand("t22.txt=\"?\"");
-		sendCommand("cpuload.val=0");
-	}
+	if (!m_ipAddress.empty())
+		::sprintf(command, "t3.txt=\"%s\"", m_ipAddress.c_str());
+	else
+		::sprintf(command, "t3.txt=\"(ip unknown)\"");
+	sendCommand(command);
+	sendCommandAction(16U);
+
+	sendCPU();
 
 	if (m_rxFrequency != -1.0F) {
 		::sprintf(command, "t30.txt=\"%.4f MHz\"", m_rxFrequency);
@@ -180,16 +163,6 @@ void CNextion::setIdleInt()
 	}
 
 	sendCommand("t31.txt=\"" + m_location + "\"");
-
-	sendCommand("t1.txt=\"MMDVM IDLE\"");
-	sendCommandAction(11U);
-
-	if (!m_ipAddress.empty())
-		::sprintf(command, "t3.txt=\"%s\"", m_ipAddress.c_str());
-	else
-		::sprintf(command, "t3.txt=\"(ip unknown)\"");
-	sendCommand(command);
-	sendCommandAction(16U);
 
 	m_clockDisplayTimer.start();
 
@@ -774,9 +747,46 @@ void CNextion::writeCPUInt(float temperature, float frequency, float load)
 	m_frequency   = frequency;
 	m_load        = load;
 
-	if (m_screenLayout & LAYOUT_DIY) {
-		if (m_mode == MODE_IDLE)
-			setIdle();
+	// Only the CPU fields: drawing the whole idle page again would show
+	// the layout's start-up texts until every field has come again.
+	if ((m_screenLayout & LAYOUT_DIY) && (m_mode == MODE_IDLE))
+		sendCPU();
+}
+
+void CNextion::sendCPU()
+{
+	char command[100U];
+
+	// CPU temperature
+	if ((m_screenLayout & LAYOUT_DIY) && (m_temperature != -1.0F)) {
+		if (m_displayTempInF) {
+			float val = (1.8F * m_temperature) + 32.0F;
+			::sprintf(command, "t20.txt=\"%2.1f %cF\"", val, 176);
+		} else {
+			::sprintf(command, "t20.txt=\"%2.1f %cC\"", m_temperature, 176);
+		}
+
+		sendCommand(command);
+		sendCommandAction(22U);
+	}
+
+	if (m_frequency != -1.0F) {
+		::sprintf(command, "t21.txt=\"%0.0f MHz\"", m_frequency / 1000.0F);
+		sendCommand(command);
+	} else {
+		sendCommand("t21.txt=\"?\"");
+	}
+
+	// TODO this is incorrect
+	if (m_load != -1.0F) {
+		::sprintf(command, "t22.txt=\"%0.2f\"", m_load);
+		sendCommand(command);
+
+		::sprintf(command, "cpuload.val=%.0f", m_load * 100.0F);
+		sendCommand(command);
+	} else {
+		sendCommand("t22.txt=\"?\"");
+		sendCommand("cpuload.val=0");
 	}
 }
 

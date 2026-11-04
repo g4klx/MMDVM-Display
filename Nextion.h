@@ -116,6 +116,7 @@ private:
 
 	void sendCommand(const std::string& command);
 	void sendCommandAction(unsigned int status);
+	void sendCPU();
 };
 
 #endif
