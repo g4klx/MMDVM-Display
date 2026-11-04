@@ -112,6 +112,7 @@ private:
 	CMutex         m_mutex;
 	unsigned char* m_reply;
 	bool           m_waiting;
+	unsigned int   m_pending;
 	CTimer         m_waitingTimer;
 
 	void sendCommand(const std::string& command);

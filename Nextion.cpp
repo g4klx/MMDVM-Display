@@ -33,6 +33,10 @@
 
 const unsigned int MAX_REPLY_LENGTH = 9U;
 
+// Instructions sent together, in bytes: well inside the buffers of the
+// Nextion and of a modem passing them on.
+const unsigned int MAX_BATCH_LENGTH = 120U;
+
 CNextion::CNextion(ISerialPort* serial, unsigned int brightness, bool displayClock, bool utc, unsigned int idleBrightness, unsigned int screenLayout, bool displayTempInF) :
 CDisplay(),
 m_callsign(),
@@ -58,6 +62,7 @@ m_output(2000U, "Nextion buffer"),
 m_mutex(),
 m_reply(nullptr),
 m_waiting(false),
+m_pending(0U),
 m_waitingTimer(1000U, 0U, 500U)
 {
 	assert(serial != nullptr);
@@ -857,6 +862,7 @@ void CNextion::clockInt(unsigned int ms)
 	m_waitingTimer.clock(ms);
 	if (m_waiting && m_waitingTimer.isRunning() && m_waitingTimer.hasExpired()) {
 		LogDebug("Nextion response timeout, resuming queue");
+		m_pending = 0U;
 		m_waiting = false;
 		m_waitingTimer.stop();
 	}
@@ -899,29 +905,47 @@ void CNextion::clockInt(unsigned int ms)
 					break;
 			}
 
-			m_waiting = false;
-			m_waitingTimer.stop();
-			break;
+			// The last reply to what was sent: send more
+			if (m_pending > 0U)
+				m_pending--;
+			if (m_pending == 0U) {
+				m_waiting = false;
+				m_waitingTimer.stop();
+				break;
+			}
 		}
 	}
 
+	// Send the instructions waiting, as many as fit in a batch, then wait
+	// for a reply to each. Over a modem each write and reply takes about
+	// 100ms however short it is, so one at a time a page took seconds.
 	if (!m_waiting) {
 		if (!m_output.isEmpty()) {
+			unsigned char buffer[MAX_BATCH_LENGTH + 200U];
+			unsigned int length = 0U;
+			unsigned int count  = 0U;
+
 			m_mutex.lock();
 
-			unsigned char len = 0U;
-			m_output.getData(&len, 1U);
+			while (!m_output.isEmpty()) {
+				unsigned char len = 0U;
+				m_output.peek(&len, 1U);
+				if ((count > 0U) && ((length + len) > MAX_BATCH_LENGTH))
+					break;
 
-			unsigned char buffer[200U];
-			m_output.getData(buffer, len);
+				m_output.getData(&len, 1U);
+				m_output.getData(buffer + length, len);
+				length += len;
+				count++;
+			}
 
 			m_mutex.unlock();
 
-			// CUtils::dump(1U, "Nextion output", buffer, len);
-			// ::printf("Nextion=\"%.*s\"\n", len - 3U, buffer);
+			// CUtils::dump(1U, "Nextion output", buffer, length);
 
-			m_serial->write(buffer, len);
+			m_serial->write(buffer, length);
 
+			m_pending = count;
 			m_waiting = true;
 			m_waitingTimer.start();
 		}
