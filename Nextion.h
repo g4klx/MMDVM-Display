@@ -120,6 +120,7 @@ private:
 	void sendCommandAction(unsigned int status);
 	void sendCPU();
 	void redrawIdle();
+	void sendClock();
 };
 
 #endif

@@ -116,9 +116,13 @@ void CNextion::setIdleInt()
 	sendCommand("page MMDVM");
 	sendCommandAction(1U);
 
-	// The status at once, with the page: a layout shows its start-up
-	// state until it comes, and over a modem the instructions after the
-	// first few arrive a few tenths of a second later.
+	// The clock and the status at once, with the page: layouts show a
+	// start-up text in the clock until it comes, and over a modem the
+	// instructions after the first few arrive a few tenths of a second
+	// later.
+	if (m_displayClock)
+		sendClock();
+
 	sendCommand("t1.txt=\"MMDVM IDLE\"");
 	sendCommandAction(11U);
 
@@ -840,21 +844,8 @@ void CNextion::clockInt(unsigned int ms)
 		// Skip clock update if the output buffer is more than half full.
 		// Over MQTT the drain rate is much slower than direct serial, so
 		// piling on timer commands can cause buffer overflow.
-		if (m_output.freeSpace() > 100U) {
-			time_t currentTime;
-			struct tm *Time;
-			::time(&currentTime);                   // Get the current time
-
-			if (m_utc)
-				Time = ::gmtime(&currentTime);
-			else
-				Time = ::localtime(&currentTime);
-
-			::setlocale(LC_TIME,"");
-			char text[50U];
-			::strftime(text, 50, "t2.txt=\"%x %X\"", Time);
-			sendCommand(text);
-		}
+		if (m_output.freeSpace() > 100U)
+			sendClock();
 
 		m_clockDisplayTimer.start(); // restart the clock display timer
 	}
@@ -977,6 +968,23 @@ void CNextion::sendCommandAction(unsigned int status)
 
 	sendCommand(text);
 	sendCommand("click S0,1");
+}
+
+void CNextion::sendClock()
+{
+	time_t currentTime;
+	struct tm *Time;
+	::time(&currentTime);                   // Get the current time
+
+	if (m_utc)
+		Time = ::gmtime(&currentTime);
+	else
+		Time = ::localtime(&currentTime);
+
+	::setlocale(LC_TIME,"");
+	char text[50U];
+	::strftime(text, 50, "t2.txt=\"%x %X\"", Time);
+	sendCommand(text);
 }
 
 void CNextion::redrawIdle()
