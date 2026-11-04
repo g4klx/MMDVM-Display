@@ -116,6 +116,12 @@ void CNextion::setIdleInt()
 	sendCommand("page MMDVM");
 	sendCommandAction(1U);
 
+	// The status at once, with the page: a layout shows its start-up
+	// state until it comes, and over a modem the instructions after the
+	// first few arrive a few tenths of a second later.
+	sendCommand("t1.txt=\"MMDVM IDLE\"");
+	sendCommandAction(11U);
+
 	if (m_brightness > 0U) {
 		::sprintf(command, "dim=%u", m_idleBrightness);
 		sendCommand(command);
@@ -141,12 +147,8 @@ void CNextion::setIdleInt()
 		sendCommandAction(17U);
 	}
 
-	// The status and the address first: until they come, a layout shows
-	// its own start-up texts, and over a modem each instruction waits
-	// for the one before it.
-	sendCommand("t1.txt=\"MMDVM IDLE\"");
-	sendCommandAction(11U);
-
+	// The address next: a layout shows its own start-up texts until it
+	// has the status and the address.
 	if (!m_ipAddress.empty())
 		::sprintf(command, "t3.txt=\"%s\"", m_ipAddress.c_str());
 	else
