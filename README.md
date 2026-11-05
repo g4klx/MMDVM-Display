@@ -23,6 +23,13 @@ The Nextion displays can connect to the UART on the Raspberry Pi, or via a USB
 to TTL serial converter like the FT-232RL. It may also be connected to the UART
 output of the MMDVM modem (Arduino Due, STM32, Teensy).
 
+Commands sent by a Nextion screen's buttons (ON7LDS layouts: 0x2A, a command
+byte and its parameters, such as "2A F0 reboot FF FF FF") are published as they
+came, without the 0x2A and the FF FF FF, on the "<Name>/nextion-out" topic. This
+program runs none of them: another program may act on them. Each message on the
+"<Name>/nextion-in" topic is sent to the screen as one Nextion instruction
+(without its FF FF FF), so that program can answer, e.g. 'msg.txt="Rebooting"'.
+
 The HD44780 displays are integrated with wiringPi for Raspberry Pi based
 platforms.
 

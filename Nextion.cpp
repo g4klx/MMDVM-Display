@@ -16,6 +16,7 @@
  *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
+#include "MQTTConnection.h"
 #include "Nextion.h"
 #include "Utils.h"
 #include "Log.h"
@@ -26,12 +27,19 @@
 #include <ctime>
 #include <clocale>
 
+extern CMQTTConnection* m_mqtt;
+
 #define LAYOUT_TA_ENABLE	(1 << 4) // enable Talker Alias (TA) display
 #define LAYOUT_TA_COLOUR	(1 << 5) // TA display with font colour change
 #define LAYOUT_TA_FONTSIZE	(1 << 6) // TA display with font size change
 #define LAYOUT_DIY			(1 << 7) // use ON7LDS-DIY layout
 
-const unsigned int MAX_REPLY_LENGTH = 9U;
+// The longest message from the screen kept, without its FF FF FF
+const unsigned int MAX_REPLY_LENGTH = 250U;
+
+// Instructions sent together, in bytes: well inside the buffers of the
+// Nextion and of a modem passing them on.
+const unsigned int MAX_BATCH_LENGTH = 120U;
 
 CNextion::CNextion(ISerialPort* serial, unsigned int brightness, bool displayClock, bool utc, unsigned int idleBrightness, unsigned int screenLayout, bool displayTempInF) :
 CDisplay(),
@@ -57,7 +65,10 @@ m_displayTempInF(displayTempInF),
 m_output(2000U, "Nextion buffer"),
 m_mutex(),
 m_reply(nullptr),
+m_replyLength(0U),
 m_waiting(false),
+m_pending(0U),
+m_redrawIdle(false),
 m_waitingTimer(1000U, 0U, 500U)
 {
 	assert(serial != nullptr);
@@ -102,11 +113,23 @@ bool CNextion::open()
 
 void CNextion::setIdleInt()
 {
+	m_redrawIdle = false;
+
 	// a few bits borrowed from Lieven De Samblanx ON7LDS, NextionDriver
 	char command[100U];
 
 	sendCommand("page MMDVM");
 	sendCommandAction(1U);
+
+	// The clock and the status at once, with the page: layouts show a
+	// start-up text in the clock until it comes, and over a modem the
+	// instructions after the first few arrive a few tenths of a second
+	// later.
+	if (m_displayClock)
+		sendClock();
+
+	sendCommand("t1.txt=\"MMDVM IDLE\"");
+	sendCommandAction(11U);
 
 	if (m_brightness > 0U) {
 		::sprintf(command, "dim=%u", m_idleBrightness);
@@ -128,42 +151,21 @@ void CNextion::setIdleInt()
 			::sprintf(command, "t5.txt=\"\"");
 		sendCommand(command);
 		sendCommandAction(17U);
-
-		// CPU temperature
-		if (m_temperature != -1.0F) {
-			if (m_displayTempInF) {
-				float val = (1.8F * m_temperature) + 32.0F;
-				::sprintf(command, "t20.txt=\"%2.1f %cF\"", val, 176);
-			} else {	
-				::sprintf(command, "t20.txt=\"%2.1f %cC\"", m_temperature, 176);
-			}
-
-			sendCommand(command);
-			sendCommandAction(22U);
-		}
 	} else {
 		sendCommand("t20.txt=\"?\"");
 		sendCommandAction(17U);
 	}
-	
-	if (m_frequency != -1.0F) {
-		::sprintf(command, "t21.txt=\"%0.0f MHz\"", m_frequency / 1000.0F);
-		sendCommand(command);
-	} else {
-		sendCommand("t21.txt=\"?\"");
-	}
 
-	// TODO this is incorrect
-	if (m_load != -1.0F) {
-		::sprintf(command, "t22.txt=\"%0.2f\"", m_load);
-		sendCommand(command);
+	// The address next: a layout shows its own start-up texts until it
+	// has the status and the address.
+	if (!m_ipAddress.empty())
+		::sprintf(command, "t3.txt=\"%s\"", m_ipAddress.c_str());
+	else
+		::sprintf(command, "t3.txt=\"(ip unknown)\"");
+	sendCommand(command);
+	sendCommandAction(16U);
 
-		::sprintf(command, "cpuload.val=%.0f", m_load * 100.0F);
-		sendCommand(command);
-	} else {
-		sendCommand("t22.txt=\"?\"");
-		sendCommand("cpuload.val=0");
-	}
+	sendCPU();
 
 	if (m_rxFrequency != -1.0F) {
 		::sprintf(command, "t30.txt=\"%.4f MHz\"", m_rxFrequency);
@@ -180,16 +182,6 @@ void CNextion::setIdleInt()
 	}
 
 	sendCommand("t31.txt=\"" + m_location + "\"");
-
-	sendCommand("t1.txt=\"MMDVM IDLE\"");
-	sendCommandAction(11U);
-
-	if (!m_ipAddress.empty())
-		::sprintf(command, "t3.txt=\"%s\"", m_ipAddress.c_str());
-	else
-		::sprintf(command, "t3.txt=\"(ip unknown)\"");
-	sendCommand(command);
-	sendCommandAction(16U);
 
 	m_clockDisplayTimer.start();
 
@@ -763,8 +755,7 @@ void CNextion::writeGeneralInt(const std::string& callsign, unsigned int id, boo
 		m_id       = id;
 		m_duplex   = duplex;
 
-		if (m_mode == MODE_IDLE)
-			setIdle();
+		redrawIdle();
 	}
 }
 
@@ -774,9 +765,46 @@ void CNextion::writeCPUInt(float temperature, float frequency, float load)
 	m_frequency   = frequency;
 	m_load        = load;
 
-	if (m_screenLayout & LAYOUT_DIY) {
-		if (m_mode == MODE_IDLE)
-			setIdle();
+	// Only the CPU fields: drawing the whole idle page again would show
+	// the layout's start-up texts until every field has come again.
+	if ((m_screenLayout & LAYOUT_DIY) && (m_mode == MODE_IDLE))
+		sendCPU();
+}
+
+void CNextion::sendCPU()
+{
+	char command[100U];
+
+	// CPU temperature
+	if ((m_screenLayout & LAYOUT_DIY) && (m_temperature != -1.0F)) {
+		if (m_displayTempInF) {
+			float val = (1.8F * m_temperature) + 32.0F;
+			::sprintf(command, "t20.txt=\"%2.1f %cF\"", val, 176);
+		} else {
+			::sprintf(command, "t20.txt=\"%2.1f %cC\"", m_temperature, 176);
+		}
+
+		sendCommand(command);
+		sendCommandAction(22U);
+	}
+
+	if (m_frequency != -1.0F) {
+		::sprintf(command, "t21.txt=\"%0.0f MHz\"", m_frequency / 1000.0F);
+		sendCommand(command);
+	} else {
+		sendCommand("t21.txt=\"?\"");
+	}
+
+	// TODO this is incorrect
+	if (m_load != -1.0F) {
+		::sprintf(command, "t22.txt=\"%0.2f\"", m_load);
+		sendCommand(command);
+
+		::sprintf(command, "cpuload.val=%.0f", m_load * 100.0F);
+		sendCommand(command);
+	} else {
+		sendCommand("t22.txt=\"?\"");
+		sendCommand("cpuload.val=0");
 	}
 }
 
@@ -791,8 +819,7 @@ void CNextion::writeInfoInt(unsigned int rxFrequency, unsigned int txFrequency, 
 		m_txFrequency = tx;
 		m_location    = location;
 
-		if (m_mode == MODE_IDLE)
-			setIdle();
+		redrawIdle();
 	}
 }
 
@@ -808,8 +835,7 @@ void CNextion::writeIPInt(const std::string& name, const std::string& ipV4, cons
 	if (address != m_ipAddress) {
 		m_ipAddress = address;
 
-		if (m_mode == MODE_IDLE)
-			setIdle();
+		redrawIdle();
 	}
 }
 
@@ -823,23 +849,17 @@ void CNextion::clockInt(unsigned int ms)
 		// Skip clock update if the output buffer is more than half full.
 		// Over MQTT the drain rate is much slower than direct serial, so
 		// piling on timer commands can cause buffer overflow.
-		if (m_output.freeSpace() > 100U) {
-			time_t currentTime;
-			struct tm *Time;
-			::time(&currentTime);                   // Get the current time
-
-			if (m_utc)
-				Time = ::gmtime(&currentTime);
-			else
-				Time = ::localtime(&currentTime);
-
-			::setlocale(LC_TIME,"");
-			char text[50U];
-			::strftime(text, 50, "t2.txt=\"%x %X\"", Time);
-			sendCommand(text);
-		}
+		if (m_output.freeSpace() > 100U)
+			sendClock();
 
 		m_clockDisplayTimer.start(); // restart the clock display timer
+	}
+
+	// Settings that came together are drawn together.
+	if (m_redrawIdle) {
+		m_redrawIdle = false;
+		if (m_mode == MODE_IDLE)
+			setIdle();
 	}
 
 	// Timeout stale waits — over MQTT, responses can be lost or delayed.
@@ -847,75 +867,136 @@ void CNextion::clockInt(unsigned int ms)
 	m_waitingTimer.clock(ms);
 	if (m_waiting && m_waitingTimer.isRunning() && m_waitingTimer.hasExpired()) {
 		LogDebug("Nextion response timeout, resuming queue");
+		m_pending = 0U;
 		m_waiting = false;
 		m_waitingTimer.stop();
 	}
 
+	// Collect each message from the screen up to its FF FF FF.
 	unsigned char c;
-	unsigned int len;
-	while ((len = m_serial->read(&c, 1U)) == 1U) {
-		::memmove(m_reply + 1U, m_reply + 0U, MAX_REPLY_LENGTH - 1U);
-		m_reply[0U] = c;
+	while (m_serial->read(&c, 1U) == 1U) {
+		if (m_replyLength < MAX_REPLY_LENGTH)
+			m_reply[m_replyLength] = c;
+		m_replyLength++;
 
-		// Do we have a valid reply?
-		if (m_reply[0U] == 0xFFU && m_reply[1U] == 0xFFU && m_reply[2U] == 0xFFU) {
-			switch (m_reply[3U]) {
-				case 0x00U:	// Invalid instruction
-				case 0x02U:	// Invalid component ID
-				case 0x03U:	// Invalid page ID
-				case 0x04U:	// Invalid picture ID
-				case 0x05U:	// Invalid font ID
-				case 0x06U:	// Invalid file operation
-				case 0x09U:	// Invalid CRC
-				case 0x11U:	// Invalid baud rate setting
-				case 0x12U:	// Invalid waveform ID or channel number
-				case 0x1BU:	// Invalid variable operation
-				case 0x1CU:	// Assignment failed to assign
-				case 0x1DU:	// EEPROM operation failed
-				case 0x1EU:	// Invalid quantity of parameters
-				case 0x1FU:	// IO operation failed
-				case 0x20U:	// Escape character invalid
-				case 0x23U:	// Variable name too long
-				case 0x24U:	// Serial buffer overflow
-					LogWarning("Nextion error response - 0x%02X", m_reply[3U]);
-					break;
-				case 0x1AU:	// Invalid variable name or operation
-					LogDebug("Nextion error response - 0x%02X", m_reply[3U]);
-					break;
-				case 0x01U:	// Instruction successful
-					break;
-				default:	// Unhandled response
-					LogWarning("Unknown Nextion response - 0x%02X", m_reply[3U]);
-					break;
+		if ((m_replyLength >= 3U) && (c == 0xFFU) && (m_reply[m_replyLength - 2U] == 0xFFU) && (m_reply[m_replyLength - 3U] == 0xFFU)) {
+			unsigned int length = m_replyLength - 3U;
+			m_replyLength = 0U;
+
+			if (length > MAX_REPLY_LENGTH) {
+				LogWarning("Nextion message too long - %u bytes", length);
+				continue;
 			}
 
-			m_waiting = false;
-			m_waitingTimer.stop();
-			break;
+			processReply(m_reply, length);
+
+			// The last reply to what was sent: send more
+			if ((length == 1U) && !m_waiting)
+				break;
 		}
 	}
 
+	// Send the instructions waiting, as many as fit in a batch, then wait
+	// for a reply to each. Over a modem each write and reply takes about
+	// 100ms however short it is, so one at a time a page took seconds.
 	if (!m_waiting) {
 		if (!m_output.isEmpty()) {
+			unsigned char buffer[MAX_BATCH_LENGTH + 200U];
+			unsigned int length = 0U;
+			unsigned int count  = 0U;
+
 			m_mutex.lock();
 
-			unsigned char len = 0U;
-			m_output.getData(&len, 1U);
+			while (!m_output.isEmpty()) {
+				unsigned char len = 0U;
+				m_output.peek(&len, 1U);
+				if ((count > 0U) && ((length + len) > MAX_BATCH_LENGTH))
+					break;
 
-			unsigned char buffer[200U];
-			m_output.getData(buffer, len);
+				m_output.getData(&len, 1U);
+				m_output.getData(buffer + length, len);
+				length += len;
+				count++;
+			}
 
 			m_mutex.unlock();
 
-			// CUtils::dump(1U, "Nextion output", buffer, len);
-			// ::printf("Nextion=\"%.*s\"\n", len - 3U, buffer);
+			// CUtils::dump(1U, "Nextion output", buffer, length);
 
-			m_serial->write(buffer, len);
+			m_serial->write(buffer, length);
 
+			m_pending = count;
 			m_waiting = true;
 			m_waitingTimer.start();
 		}
 	}
+}
+
+void CNextion::processReply(const unsigned char* data, unsigned int length)
+{
+	if (length == 1U) {
+		switch (data[0U]) {
+			case 0x00U:	// Invalid instruction
+			case 0x02U:	// Invalid component ID
+			case 0x03U:	// Invalid page ID
+			case 0x04U:	// Invalid picture ID
+			case 0x05U:	// Invalid font ID
+			case 0x06U:	// Invalid file operation
+			case 0x09U:	// Invalid CRC
+			case 0x11U:	// Invalid baud rate setting
+			case 0x12U:	// Invalid waveform ID or channel number
+			case 0x1BU:	// Invalid variable operation
+			case 0x1CU:	// Assignment failed to assign
+			case 0x1DU:	// EEPROM operation failed
+			case 0x1EU:	// Invalid quantity of parameters
+			case 0x1FU:	// IO operation failed
+			case 0x20U:	// Escape character invalid
+			case 0x23U:	// Variable name too long
+			case 0x24U:	// Serial buffer overflow
+				LogWarning("Nextion error response - 0x%02X", data[0U]);
+				break;
+			case 0x1AU:	// Invalid variable name or operation
+				LogDebug("Nextion error response - 0x%02X", data[0U]);
+				break;
+			case 0x01U:	// Instruction successful
+				break;
+			default:	// Unhandled response
+				LogWarning("Unknown Nextion response - 0x%02X", data[0U]);
+				break;
+		}
+
+		if (m_pending > 0U)
+			m_pending--;
+		if (m_pending == 0U) {
+			m_waiting = false;
+			m_waitingTimer.stop();
+		}
+		return;
+	}
+
+	// A command from the screen (ON7LDS layouts): 0x2A, a command byte
+	// and its parameters. It is passed on as it came, without the 0x2A,
+	// for another program to act on; the screen's buttons run nothing here.
+	if ((length >= 2U) && (data[0U] == 0x2AU)) {
+		LogMessage("Nextion command 0x%02X", data[1U]);
+
+		if (m_mqtt != nullptr)
+			m_mqtt->publish("nextion-out", data + 1U, length - 1U);
+		return;
+	}
+
+	// Touch events, page numbers, start-up and sleep notices
+	LogDebug("Nextion message 0x%02X, %u bytes", data[0U], length);
+}
+
+void CNextion::writeCommandInt(const std::string& command)
+{
+	if (command.empty() || (command.size() > 196U)) {
+		LogWarning("Invalid Nextion command from MQTT, %u bytes", (unsigned int)command.size());
+		return;
+	}
+
+	sendCommand(command);
 }
 
 void CNextion::close()
@@ -936,12 +1017,42 @@ void CNextion::sendCommandAction(unsigned int status)
 	sendCommand("click S0,1");
 }
 
+void CNextion::sendClock()
+{
+	time_t currentTime;
+	struct tm *Time;
+	::time(&currentTime);                   // Get the current time
+
+	if (m_utc)
+		Time = ::gmtime(&currentTime);
+	else
+		Time = ::localtime(&currentTime);
+
+	::setlocale(LC_TIME,"");
+	char text[50U];
+	::strftime(text, 50, "t2.txt=\"%x %X\"", Time);
+	sendCommand(text);
+}
+
+void CNextion::redrawIdle()
+{
+	if (m_mode == MODE_IDLE)
+		m_redrawIdle = true;
+}
+
 void CNextion::sendCommand(const std::string& command)
 {
 	unsigned char len = (unsigned char)command.size();
 	unsigned char c = len + 3U;
 
 	m_mutex.lock();
+
+	// A whole instruction or none: a part would garble every one after it.
+	if (!m_output.hasSpace(len + 4U)) {
+		m_mutex.unlock();
+		LogWarning("Nextion buffer full, instruction dropped");
+		return;
+	}
 
 	m_output.addData(&c, 1U);
 	m_output.addData((unsigned char*)command.c_str(), len);

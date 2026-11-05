@@ -232,11 +232,13 @@ int CMMDVMDisplay::run()
 	const std::string displayName = m_conf.getMQTTHostName() + "/display-out";
 	const std::string hostName    = m_conf.getMQTTHostName() + "/json";
 	const std::string infoName    = m_conf.getMQTTInfoName() + "/json";
+	const std::string nextionName = m_conf.getMQTTName() + "/nextion-in";
 
 	std::vector<std::pair<std::string, void (*)(const unsigned char*, unsigned int)>> subscriptions;
 	subscriptions.push_back(std::make_pair(displayName, CMMDVMDisplay::onDisplay));
 	subscriptions.push_back(std::make_pair(hostName,    CMMDVMDisplay::onHost));
 	subscriptions.push_back(std::make_pair(infoName,    CMMDVMDisplay::onInfo));
+	subscriptions.push_back(std::make_pair(nextionName, CMMDVMDisplay::onNextion));
 
 	m_mqtt = new CMQTTConnection(m_conf.getMQTTAddress(), m_conf.getMQTTPort(), m_conf.getMQTTName(), m_conf.getMQTTAuthEnabled(), m_conf.getMQTTUsername(), m_conf.getMQTTPassword(), subscriptions, m_conf.getMQTTKeepalive());
 	ret = m_mqtt->open();
@@ -482,6 +484,17 @@ void CMMDVMDisplay::readDisplay(const unsigned char* data, unsigned int length)
 
 	if (m_msp != nullptr)
 		m_msp->readData(data, length);
+}
+
+// A Nextion instruction from another program, e.g. an answer to a command
+// from the screen, without its FF FF FF.
+void CMMDVMDisplay::readNextion(const unsigned char* data, unsigned int length)
+{
+	assert(data != nullptr);
+	assert(length > 0U);
+
+	if (m_display != nullptr)
+		m_display->writeCommand(std::string((char*)data, length));
 }
 
 void CMMDVMDisplay::readHost(const std::string& text)
@@ -1120,4 +1133,13 @@ void CMMDVMDisplay::onInfo(const unsigned char* data, unsigned int length)
 	assert(driver != nullptr);
 
 	driver->readInfo(std::string((char*)data, length));
+}
+
+void CMMDVMDisplay::onNextion(const unsigned char* data, unsigned int length)
+{
+	assert(data != nullptr);
+	assert(length > 0U);
+	assert(driver != nullptr);
+
+	driver->readNextion(data, length);
 }

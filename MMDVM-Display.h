@@ -53,6 +53,7 @@ private:
 	void readHost(const std::string& text);
 	void readInfo(const std::string& text);
 	void readDisplay(const unsigned char* data, unsigned int length);
+	void readNextion(const unsigned char* data, unsigned int length);
 
 	void parseMMDVM(const nlohmann::json& json);
 	void parseRSSI(const nlohmann::json& json);
@@ -77,6 +78,7 @@ private:
 	static void onDisplay(const unsigned char* data, unsigned int length);
 	static void onHost(const unsigned char* data, unsigned int length);
 	static void onInfo(const unsigned char* data, unsigned int length);
+	static void onNextion(const unsigned char* data, unsigned int length);
 };
 
 #endif
