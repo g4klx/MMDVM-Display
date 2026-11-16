@@ -95,7 +95,7 @@ bool           m_connected(false);
 char           m_displayBuffer1[BUFFER_MAX_LEN];
 char           m_displayBuffer2[BUFFER_MAX_LEN];
 
-CLCDproc::CLCDproc(const std::string& address, unsigned int port, unsigned short localPort, bool displayClock, bool utc, bool dimOnIdle) :
+CLCDproc::CLCDproc(const std::string& address, unsigned int port, unsigned short localPort, bool displayClock, bool utc, const std::string& dateFormat, const std::string& timeFormat, bool dimOnIdle) :
 CDisplay(),
 m_callsign(),
 m_id(0U),
@@ -105,6 +105,8 @@ m_port(port),
 m_localPort(localPort),
 m_displayClock(displayClock),
 m_utc(utc),
+m_dateFormat(dateFormat),
+m_timeFormat(timeFormat),
 m_dimOnIdle(dimOnIdle),
 m_dmr(false),
 m_clockDisplayTimer(1000U, 0U, 250U)   // Update the clock display every 250ms
@@ -566,8 +568,11 @@ void CLCDproc::clockInt(unsigned int ms)
 			Time = ::localtime(&currentTime);
 
 		setlocale(LC_TIME, "");
-		strftime(m_displayBuffer1, 128, "%X", Time);  // Time
-		strftime(m_displayBuffer2, 128, "%x", Time);  // Date
+		// strftime() leaves the buffer undefined when the result does not fit
+		if (strftime(m_displayBuffer1, 128, m_timeFormat.c_str(), Time) == 0U)  // Time
+			m_displayBuffer1[0] = '\0';
+		if (strftime(m_displayBuffer2, 128, m_dateFormat.c_str(), Time) == 0U)  // Date
+			m_displayBuffer2[0] = '\0';
 
 		if (m_cols < 26U && m_rows == 2U) {
 			socketPrintf(m_socketfd, "widget_set Status Time %u 2 \"%s%s\"", m_cols - 9, strlen(m_displayBuffer1) > 8 ? "" : "  ", m_displayBuffer1);

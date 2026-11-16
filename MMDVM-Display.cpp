@@ -348,13 +348,18 @@ bool CMMDVMDisplay::createDisplay()
 		unsigned int idleBrightness = m_conf.getNextionIdleBrightness();
 		unsigned int screenLayout   = m_conf.getNextionScreenLayout();
 		bool tempInF                = m_conf.getTemperatureInF();
+		std::string dateFormat      = m_conf.getDateFormat();
+		std::string timeFormat      = m_conf.getTimeFormat();
 
 		LogInfo("    Port: %s", port.c_str());
 		LogInfo("    Speed: %u", speed);
 		LogInfo("    Brightness: %u", brightness);
 		LogInfo("    Clock Display: %s", displayClock ? "yes" : "no");
-		if (displayClock)
+		if (displayClock) {
 			LogInfo("    Display UTC: %s", utc ? "yes" : "no");
+			LogInfo("    Date Format: %s", dateFormat.c_str());
+			LogInfo("    Time Format: %s", timeFormat.c_str());
+		}
 		LogInfo("    Idle Brightness: %u", idleBrightness);
 		LogInfo("    Temperature in Fahrenheit: %s ", tempInF ? "yes" : "no");
  
@@ -375,10 +380,10 @@ bool CMMDVMDisplay::createDisplay()
 
 		if (port == "modem") {
 			ISerialPort* serial = m_msp = new CModemSerialPort(m_conf.getMQTTHostName());
-			m_display = new CNextion(serial, brightness, displayClock, utc, idleBrightness, screenLayout, tempInF);
+			m_display = new CNextion(serial, brightness, displayClock, utc, dateFormat, timeFormat, idleBrightness, screenLayout, tempInF);
 		} else {
 			ISerialPort* serial = new CUARTController(port, speed);
-			m_display = new CNextion(serial, brightness, displayClock, utc, idleBrightness, screenLayout, tempInF);
+			m_display = new CNextion(serial, brightness, displayClock, utc, dateFormat, timeFormat, idleBrightness, screenLayout, tempInF);
 		}
 	} else if (type == "LCDproc") {
 		std::string address       = m_conf.getLCDprocAddress();
@@ -387,6 +392,8 @@ bool CMMDVMDisplay::createDisplay()
 		bool displayClock         = m_conf.getLCDprocDisplayClock();
 		bool utc                  = m_conf.getLCDprocUTC();
 		bool dimOnIdle            = m_conf.getLCDprocDimOnIdle();
+		std::string dateFormat    = m_conf.getDateFormat();
+		std::string timeFormat    = m_conf.getTimeFormat();
 
 		LogInfo("    Address: %s", address.c_str());
 		LogInfo("    Port: %u", port);
@@ -399,10 +406,13 @@ bool CMMDVMDisplay::createDisplay()
 		LogInfo("    Dim Display on Idle: %s", dimOnIdle ? "yes" : "no");
 		LogInfo("    Clock Display: %s", displayClock ? "yes" : "no");
 
-		if (displayClock)
+		if (displayClock) {
 			LogInfo("    Display UTC: %s", utc ? "yes" : "no");
+			LogInfo("    Date Format: %s", dateFormat.c_str());
+			LogInfo("    Time Format: %s", timeFormat.c_str());
+		}
 
-		m_display = new CLCDproc(address, port, localPort, displayClock, utc, dimOnIdle);
+		m_display = new CLCDproc(address, port, localPort, displayClock, utc, dateFormat, timeFormat, dimOnIdle);
 #if defined(USE_HD44780)
 	} else if (type == "HD44780") {
 		unsigned int rows              = m_conf.getHD44780Rows();
@@ -415,6 +425,8 @@ bool CMMDVMDisplay::createDisplay()
 		unsigned int pwmDim            = m_conf.getHD44780PWMDim();
 		bool displayClock              = m_conf.getHD44780DisplayClock();
 		bool utc                       = m_conf.getHD44780UTC();
+		std::string dateFormat         = m_conf.getDateFormat();
+		std::string timeFormat         = m_conf.getTimeFormat();
 
 		if (pins.size() == 6U) {
 			LogInfo("    Rows: %u", rows);
@@ -434,10 +446,13 @@ bool CMMDVMDisplay::createDisplay()
 			}
 
 			LogInfo("    Clock Display: %s", displayClock ? "yes" : "no");
-			if (displayClock)
+			if (displayClock) {
 				LogInfo("    Display UTC: %s", utc ? "yes" : "no");
+				LogInfo("    Date Format: %s", dateFormat.c_str());
+				LogInfo("    Time Format: %s", timeFormat.c_str());
+			}
 
-			m_display = new CHD44780(rows, columns, pins, i2cAddress, pwm, pwmPin, pwmBright, pwmDim, displayClock, utc);
+			m_display = new CHD44780(rows, columns, pins, i2cAddress, pwm, pwmPin, pwmBright, pwmDim, displayClock, utc, dateFormat, timeFormat);
 		}
 #endif
 #if defined(USE_OLED)

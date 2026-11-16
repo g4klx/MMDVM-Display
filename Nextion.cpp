@@ -41,7 +41,7 @@ const unsigned int MAX_REPLY_LENGTH = 250U;
 // Nextion and of a modem passing them on.
 const unsigned int MAX_BATCH_LENGTH = 120U;
 
-CNextion::CNextion(ISerialPort* serial, unsigned int brightness, bool displayClock, bool utc, unsigned int idleBrightness, unsigned int screenLayout, bool displayTempInF) :
+CNextion::CNextion(ISerialPort* serial, unsigned int brightness, bool displayClock, bool utc, const std::string& dateFormat, const std::string& timeFormat, unsigned int idleBrightness, unsigned int screenLayout, bool displayTempInF) :
 CDisplay(),
 m_callsign(),
 m_id(0U),
@@ -58,6 +58,8 @@ m_brightness(brightness),
 m_mode(MODE_IDLE),
 m_displayClock(displayClock),
 m_utc(utc),
+m_dateFormat(dateFormat),
+m_timeFormat(timeFormat),
 m_idleBrightness(idleBrightness),
 m_screenLayout(0),
 m_clockDisplayTimer(1000U, 0U, 400U),
@@ -1029,8 +1031,15 @@ void CNextion::sendClock()
 		Time = ::localtime(&currentTime);
 
 	::setlocale(LC_TIME,"");
-	char text[50U];
-	::strftime(text, 50, "t2.txt=\"%x %X\"", Time);
+	char dateText[50U], timeText[50U];
+	// strftime() leaves the buffer undefined when the result does not fit
+	if (::strftime(dateText, 50, m_dateFormat.c_str(), Time) == 0U)
+		dateText[0] = '\0';
+	if (::strftime(timeText, 50, m_timeFormat.c_str(), Time) == 0U)
+		timeText[0] = '\0';
+
+	char text[120U];
+	::snprintf(text, 120, "t2.txt=\"%s %s\"", dateText, timeText);
 	sendCommand(text);
 }
 

@@ -31,7 +31,7 @@
 class CNextion : public CDisplay
 {
 public:
-	CNextion(ISerialPort* serial, unsigned int brightness, bool displayClock, bool utc, unsigned int idleBrightness, unsigned int screenLayout, bool displayTempInF);
+	CNextion(ISerialPort* serial, unsigned int brightness, bool displayClock, bool utc, const std::string& dateFormat, const std::string& timeFormat, unsigned int idleBrightness, unsigned int screenLayout, bool displayTempInF);
 	virtual ~CNextion();
 
 	virtual bool open() override;
@@ -106,6 +106,8 @@ private:
 	unsigned char  m_mode;
 	bool           m_displayClock;
 	bool           m_utc;
+	std::string    m_dateFormat;
+	std::string    m_timeFormat;
 	unsigned int   m_idleBrightness;
 	unsigned int   m_screenLayout;
 	CTimer         m_clockDisplayTimer;

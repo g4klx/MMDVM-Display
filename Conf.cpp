@@ -42,6 +42,8 @@ CConf::CConf(const std::string& file) :
 m_file(file),
 m_display("Dummy"),
 m_temperatureInF(false),
+m_dateFormat(),
+m_timeFormat(),
 m_daemon(false),
 m_logMQTTLevel(0U),
 m_logDisplayLevel(0U),
@@ -162,6 +164,10 @@ bool CConf::read()
 				m_display = value;
 			else if (::strcmp(key, "TemperatureInF") == 0)
 				m_temperatureInF = ::atoi(value) == 1;
+			else if (::strcmp(key, "DateFormat") == 0)
+				m_dateFormat = value;
+			else if (::strcmp(key, "TimeFormat") == 0)
+				m_timeFormat = value;
 			else if (::strcmp(key, "Daemon") == 0)
 				m_daemon = ::atoi(value) == 1;
 		} else if (section == SECTION::LOG) {
@@ -281,6 +287,18 @@ std::string CConf::getDisplay() const
 bool CConf::getTemperatureInF() const
 {
 	return m_temperatureInF;
+}
+
+// The clock's date as a strftime() format, the locale's (%x) if unset.
+std::string CConf::getDateFormat() const
+{
+	return m_dateFormat.empty() ? "%x" : m_dateFormat;
+}
+
+// The clock's time as a strftime() format, the locale's (%X) if unset.
+std::string CConf::getTimeFormat() const
+{
+	return m_timeFormat.empty() ? "%X" : m_timeFormat;
 }
 
 bool CConf::getDaemon() const

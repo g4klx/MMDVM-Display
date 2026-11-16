@@ -33,6 +33,8 @@ public:
 	// The General section
 	std::string  getDisplay() const;
 	bool         getTemperatureInF() const;
+	std::string  getDateFormat() const;
+	std::string  getTimeFormat() const;
 	bool         getDaemon() const;
 
 	// The Log section
@@ -97,6 +99,8 @@ private:
 	std::string  m_file;
 	std::string  m_display;
 	bool         m_temperatureInF;
+	std::string  m_dateFormat;
+	std::string  m_timeFormat;
 	bool         m_daemon;
 
 	unsigned int m_logMQTTLevel;

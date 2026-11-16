@@ -34,7 +34,7 @@
 class CLCDproc : public CDisplay
 {
 public:
-	CLCDproc(const std::string& address, unsigned int port, unsigned short localPort, bool displayClock, bool utc, bool dimOnIdle);
+	CLCDproc(const std::string& address, unsigned int port, unsigned short localPort, bool displayClock, bool utc, const std::string& dateFormat, const std::string& timeFormat, bool dimOnIdle);
 	virtual ~CLCDproc();
 
 	virtual bool open() override;
@@ -90,6 +90,8 @@ private:
 	unsigned short m_localPort;
 	bool         m_displayClock;
 	bool         m_utc;
+	std::string  m_dateFormat;
+	std::string  m_timeFormat;
 	bool         m_dimOnIdle;
 	bool         m_dmr;
 	CTimer       m_clockDisplayTimer;
