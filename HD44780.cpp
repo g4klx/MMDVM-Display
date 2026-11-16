@@ -44,7 +44,7 @@ const unsigned int YSF_RSSI_COUNT   = 13U;   // 13 * 100ms = 1300ms
 const unsigned int P25_RSSI_COUNT   = 7U;    // 7 * 180ms = 1260ms
 const unsigned int NXDN_RSSI_COUNT  = 28U;   // 28 * 40ms = 1120ms
 
-CHD44780::CHD44780(unsigned int rows, unsigned int cols, const std::vector<unsigned int>& pins, unsigned int i2cAddress, bool pwm, unsigned int pwmPin, unsigned int pwmBright, unsigned int pwmDim, bool displayClock, bool utc) :
+CHD44780::CHD44780(unsigned int rows, unsigned int cols, const std::vector<unsigned int>& pins, unsigned int i2cAddress, bool pwm, unsigned int pwmPin, unsigned int pwmBright, unsigned int pwmDim, bool displayClock, bool utc, const std::string& dateFormat, const std::string& timeFormat) :
 CDisplay(),
 m_callsign(),
 m_id(0U),
@@ -64,6 +64,8 @@ m_pwmBright(pwmBright),
 m_pwmDim(pwmDim),
 m_displayClock(displayClock),
 m_utc(utc),
+m_dateFormat(dateFormat),
+m_timeFormat(timeFormat),
 m_fd(-1),
 m_dmr(false),
 m_clockDisplayTimer(1000U, 0U, 250U),   // Update the clock display every 250ms
@@ -1065,8 +1067,11 @@ void CHD44780::clockInt(unsigned int ms)
 			Time = ::localtime(&currentTime);
 			
 		setlocale(LC_TIME,"");
-		::strftime(m_buffer1, 128, "%X", Time);  // Time
-		::strftime(m_buffer2, 128, "%x", Time);  // Date
+		// strftime() leaves the buffer undefined when the result does not fit
+		if (::strftime(m_buffer1, 128, m_timeFormat.c_str(), Time) == 0U)  // Time
+			m_buffer1[0] = '\0';
+		if (::strftime(m_buffer2, 128, m_dateFormat.c_str(), Time) == 0U)  // Date
+			m_buffer2[0] = '\0';
 
 		if (m_cols == 16U && m_rows == 2U) {
 			::lcdPosition(m_fd, m_cols - 10, 1);
