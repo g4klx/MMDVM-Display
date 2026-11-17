@@ -147,6 +147,7 @@ m_msp(nullptr),
 m_hostConfName(),
 m_mqttInfoName(),
 m_temperatureInF(false),
+m_modeSeen(false),
 m_confTimer(1000U, 15U),
 m_addrTimer(1000U, 15U)
 {
@@ -635,6 +636,7 @@ void CMMDVMDisplay::parseMMDVM(const nlohmann::json& json)
 		bool hasMode = json.contains("mode");
 		if (hasMode) {
 			std::string mode = json["mode"];
+			m_modeSeen = true;
 
 			if (mode == "idle")
 				m_display->setIdle();
@@ -1005,6 +1007,15 @@ void CMMDVMDisplay::parseAddresses(const nlohmann::json& json)
 			}
 
 			m_display->writeIP(name, ipV4, ipV6);
+
+			// Restarted while MMDVM-Host keeps running, the display hears
+			// no mode until the next call, so the OLED would show
+			// "Initializing" (and an HD44780 nothing) until then. The first
+			// answer about the addresses means the system is up: show idle.
+			if (!m_modeSeen) {
+				m_modeSeen = true;
+				m_display->setIdle();
+			}
 
 			return;
 		}
