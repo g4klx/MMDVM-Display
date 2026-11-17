@@ -43,6 +43,7 @@ private:
 	std::string       m_hostConfName;
 	std::string       m_mqttInfoName;
 	bool              m_temperatureInF;
+	bool              m_modeSeen;
 	CTimer            m_confTimer;
 	CTimer            m_addrTimer;
 
