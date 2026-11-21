@@ -30,6 +30,26 @@ program runs none of them: another program may act on them. Each message on the
 "<Name>/nextion-in" topic is sent to the screen as one Nextion instruction
 (without its FF FF FF), so that program can answer, e.g. 'msg.txt="Rebooting"'.
 
+With the ON7LDS DIY layout (ScreenLayout=3), this program also answers what
+that layout asks for itself, as NextionDriver did, so it needs nothing else:
+
+- 2A FE <page>: the page's fields again (it asks after its own pages).
+- 2A FC 1 / 2A FC 0: hold updates while it shows its own pages, then carry on;
+  a call that came meanwhile is shown as it is now.
+- 2A FC 2: the screen's model and serial number (msg1, msg2).
+- 2A FD <page> <lines>: the page's last heard list (LH<n>t<f>).
+- The modes MMDVM-Host has enabled (A1-A6) and its networks with their
+  gateways running, by MMDVM-Info's list of programs, and the internet (N0-N6).
+- The free space of the disk (t23), and talkgroup names (t9 slot 1, t8 slot 2)
+  from the GroupsFile set in [Nextion].
+- Callers' details (t13-t17 DMR, t18-t19 NXDN) from DMRIdFile and NXDNIdFile in
+  [Nextion]: the same files as MMDVM-Host's [DMR Id Lookup] and [NXDN Id Lookup]
+  (DMRIds.dat or RadioID's user.csv, and NXDN.csv), read on disk as each call
+  starts, not loaded into memory.
+- Sleep after SleepWhenIdle seconds idle; a call or a touch wakes it.
+
+These commands are not published on "<Name>/nextion-out"; the others are.
+
 The HD44780 displays are integrated with wiringPi for Raspberry Pi based
 platforms.
 

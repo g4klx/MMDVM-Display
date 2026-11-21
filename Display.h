@@ -22,10 +22,29 @@
 #include "Timer.h"
 
 #include <string>
+#include <vector>
 
 #include <cstdint>
 
 class CConf;
+
+// The modes and networks MMDVM-Host has enabled, from its config.
+struct CHostModes {
+	CHostModes() :
+	dstar(false), dmr(false), ysf(false), p25(false), nxdn(false),
+	dstarNet(false), dmrNet(false), ysfNet(false), p25Net(false), nxdnNet(false)
+	{
+	}
+
+	bool operator!=(const CHostModes& o) const
+	{
+		return (dstar != o.dstar) || (dmr != o.dmr) || (ysf != o.ysf) || (p25 != o.p25) || (nxdn != o.nxdn) ||
+		       (dstarNet != o.dstarNet) || (dmrNet != o.dmrNet) || (ysfNet != o.ysfNet) || (p25Net != o.p25Net) || (nxdnNet != o.nxdnNet);
+	}
+
+	bool dstar, dmr, ysf, p25, nxdn;
+	bool dstarNet, dmrNet, ysfNet, p25Net, nxdnNet;
+};
 
 class CDisplay
 {
@@ -80,6 +99,10 @@ public:
 	void writeCPU(float temperature, float frequency, float load);
 	void writeInfo(unsigned int rxFrequency, unsigned int txFrequency, const std::string& location);
 	void writeIP(const std::string& name, const std::string& ipV4, const std::string& ipV6);
+	void writeModes(const CHostModes& modes);
+	void writePrograms(const std::vector<std::string>& running);
+	void writeDMRCaller(unsigned int slotNo, unsigned int id);
+	void writeNXDNCaller(unsigned int id);
 
 	void writeCommand(const std::string& command);
 
@@ -134,6 +157,10 @@ protected:
 	virtual void writeCPUInt(float temperature, float frequency, float load);
 	virtual void writeInfoInt(unsigned int rxFrequency, unsigned int txFrequency, const std::string& location);
 	virtual void writeIPInt(const std::string& name, const std::string& ipV4, const std::string& ipV6);
+	virtual void writeModesInt(const CHostModes& modes);
+	virtual void writeProgramsInt(const std::vector<std::string>& running);
+	virtual void writeDMRCallerInt(unsigned int slotNo, unsigned int id);
+	virtual void writeNXDNCallerInt(unsigned int id);
 
 	virtual void writeCommandInt(const std::string& command);
 

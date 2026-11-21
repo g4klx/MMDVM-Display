@@ -45,6 +45,13 @@ private:
 	bool              m_temperatureInF;
 	bool              m_modeSeen;
 	CTimer            m_confTimer;
+	// The station's location, from DMRGateway's [Info] (MMDVM-Host has
+	// none): asked for a few times with the host's config
+	std::string       m_location;
+	unsigned int      m_locationTries;
+	bool              m_hostComplete;
+	unsigned int      m_rxFrequency;
+	unsigned int      m_txFrequency;
 	CTimer            m_addrTimer;
 
 	bool createDisplay();
@@ -74,6 +81,8 @@ private:
 	void parseHostConfig(const nlohmann::json& json);
 
 	void pollHostConfig();
+	void parseGatewayConfig(const nlohmann::json& json);
+	void stopConfigPolling();
 	void pollHostAddresses();
 
 	static void onDisplay(const unsigned char* data, unsigned int length);

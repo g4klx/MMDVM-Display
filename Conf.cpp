@@ -77,6 +77,10 @@ m_nextionDisplayClock(false),
 m_nextionUTC(false),
 m_nextionIdleBrightness(20U),
 m_nextionScreenLayout(0U),
+m_nextionGroupsFile(),
+m_nextionSleepWhenIdle(0U),
+m_nextionDMRIdFile(),
+m_nextionNXDNIdFile(),
 m_oledType(3U),
 m_oledBrightness(0U),
 m_oledInvert(false),
@@ -245,6 +249,14 @@ bool CConf::read()
 				m_nextionIdleBrightness = (unsigned int)::atoi(value);
 			else if (::strcmp(key, "ScreenLayout") == 0)
 				m_nextionScreenLayout = (unsigned int)::strtoul(value, nullptr, 0);
+			else if (::strcmp(key, "GroupsFile") == 0)
+				m_nextionGroupsFile = value;
+			else if (::strcmp(key, "SleepWhenIdle") == 0)
+				m_nextionSleepWhenIdle = (unsigned int)::atoi(value);
+			else if (::strcmp(key, "DMRIdFile") == 0)
+				m_nextionDMRIdFile = value;
+			else if (::strcmp(key, "NXDNIdFile") == 0)
+				m_nextionNXDNIdFile = value;
 		} else if (section == SECTION::OLED) {
 			if (::strcmp(key, "Type") == 0)
 				m_oledType = (unsigned char)::atoi(value);
@@ -464,6 +476,31 @@ unsigned int CConf::getNextionIdleBrightness() const
 unsigned int CConf::getNextionScreenLayout() const
 {
 	return m_nextionScreenLayout;
+}
+
+std::string CConf::getNextionGroupsFile() const
+{
+	return m_nextionGroupsFile;
+}
+
+unsigned int CConf::getNextionSleepWhenIdle() const
+{
+	return m_nextionSleepWhenIdle;
+}
+
+std::string CConf::getNextionDMRIdFile() const
+{
+	return m_nextionDMRIdFile;
+}
+
+std::string CConf::getNextionNXDNIdFile() const
+{
+	return m_nextionNXDNIdFile;
+}
+
+std::string CConf::getFile() const
+{
+	return m_file;
 }
 
 unsigned char CConf::getOLEDType() const
