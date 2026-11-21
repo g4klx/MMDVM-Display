@@ -78,6 +78,11 @@ public:
 	bool         getNextionUTC() const;
 	unsigned int getNextionIdleBrightness() const;
 	unsigned int getNextionScreenLayout() const;
+	std::string  getNextionGroupsFile() const;
+	unsigned int getNextionSleepWhenIdle() const;
+	std::string  getNextionDMRIdFile() const;
+	std::string  getNextionNXDNIdFile() const;
+	std::string  getFile() const;
 
 	// The OLED section
 	unsigned char  getOLEDType() const;
@@ -139,6 +144,10 @@ private:
 	bool         m_nextionUTC;
 	unsigned int m_nextionIdleBrightness;
 	unsigned int m_nextionScreenLayout;
+	std::string  m_nextionGroupsFile;
+	unsigned int m_nextionSleepWhenIdle;
+	std::string  m_nextionDMRIdFile;
+	std::string  m_nextionNXDNIdFile;
   
 	unsigned char m_oledType;
 	unsigned char m_oledBrightness;

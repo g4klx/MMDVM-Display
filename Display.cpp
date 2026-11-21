@@ -327,6 +327,26 @@ void CDisplay::writeIP(const std::string& name, const std::string& ipV4, const s
 	writeIPInt(name, ipV4, ipV6);
 }
 
+void CDisplay::writeModes(const CHostModes& modes)
+{
+	writeModesInt(modes);
+}
+
+void CDisplay::writePrograms(const std::vector<std::string>& running)
+{
+	writeProgramsInt(running);
+}
+
+void CDisplay::writeDMRCaller(unsigned int slotNo, unsigned int id)
+{
+	writeDMRCallerInt(slotNo, id);
+}
+
+void CDisplay::writeNXDNCaller(unsigned int id)
+{
+	writeNXDNCallerInt(id);
+}
+
 void CDisplay::writeCommand(const std::string& command)
 {
 	writeCommandInt(command);
@@ -464,6 +484,22 @@ void CDisplay::writeInfoInt(unsigned int rxFrequency, unsigned int txFrequency, 
 }
 
 void CDisplay::writeIPInt(const std::string& name, const std::string& ipV4, const std::string& ipV6)
+{
+}
+
+void CDisplay::writeModesInt(const CHostModes& modes)
+{
+}
+
+void CDisplay::writeProgramsInt(const std::vector<std::string>& running)
+{
+}
+
+void CDisplay::writeDMRCallerInt(unsigned int slotNo, unsigned int id)
+{
+}
+
+void CDisplay::writeNXDNCallerInt(unsigned int id)
 {
 }
 

@@ -28,7 +28,7 @@ DEPS = $(SRCS:.cpp=.d)
 #CFLAGS  = -g -O3 -Wall -std=c++11 -MMD -MD -pthread -DUSE_HD44780 -DUSE_PCF8574_DISPLAY -I/usr/local/include
 #LIBS    = -lwiringPi -lwiringPiDev -lpthread -lutil -lmosquitto
 
-OBJS1 =	Conf.o Display.o MMDVM-Display.o Dummy.o HD44780.o LCDproc.o Log.o MQTTConnection.o ModemSerialPort.o Mutex.o \
+OBJS1 =	Conf.o Display.o MMDVM-Display.o Dummy.o HD44780.o IdLookup.o LCDproc.o Log.o MQTTConnection.o ModemSerialPort.o Mutex.o \
 	Nextion.o OLED.o SerialPort.o StopWatch.o TFTSurenoo.o Thread.o Timer.o UARTController.o Utils.o
 
 OBJS2 =	Conf.o Log.o MQTTConnection.o ModemSerialPort.o Mutex.o NextionUpdater.o SerialPort.o StopWatch.o Thread.o Timer.o \

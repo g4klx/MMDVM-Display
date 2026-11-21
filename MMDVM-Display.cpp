@@ -149,6 +149,11 @@ m_mqttInfoName(),
 m_temperatureInF(false),
 m_modeSeen(false),
 m_confTimer(1000U, 15U),
+m_location("?"),
+m_locationTries(0U),
+m_hostComplete(false),
+m_rxFrequency(0U),
+m_txFrequency(0U),
 m_addrTimer(1000U, 15U)
 {
 }
@@ -351,6 +356,10 @@ bool CMMDVMDisplay::createDisplay()
 		bool tempInF                = m_conf.getTemperatureInF();
 		std::string dateFormat      = m_conf.getDateFormat();
 		std::string timeFormat      = m_conf.getTimeFormat();
+		std::string groupsFile      = m_conf.getNextionGroupsFile();
+		unsigned int sleepWhenIdle  = m_conf.getNextionSleepWhenIdle();
+		std::string dmrIdFile       = m_conf.getNextionDMRIdFile();
+		std::string nxdnIdFile      = m_conf.getNextionNXDNIdFile();
 
 		LogInfo("    Port: %s", port.c_str());
 		LogInfo("    Speed: %u", speed);
@@ -373,19 +382,30 @@ bool CMMDVMDisplay::createDisplay()
 			break;
 		case 3U:
 			LogInfo("    Screen Layout: DIY by ON7LDS");
+			if (!groupsFile.empty())
+				LogInfo("    Groups File: %s", groupsFile.c_str());
+			LogInfo("    Sleep When Idle: %u s", sleepWhenIdle);
+			if (!dmrIdFile.empty())
+				LogInfo("    DMR Id File: %s", dmrIdFile.c_str());
+			if (!nxdnIdFile.empty())
+				LogInfo("    NXDN Id File: %s", nxdnIdFile.c_str());
 			break;
 		default:
 			LogError("    Screen Layout: %u (Unknown)", screenLayout);
 			return false;
 		}
 
-		if (port == "modem") {
-			ISerialPort* serial = m_msp = new CModemSerialPort(m_conf.getMQTTHostName());
-			m_display = new CNextion(serial, brightness, displayClock, utc, dateFormat, timeFormat, idleBrightness, screenLayout, tempInF);
-		} else {
-			ISerialPort* serial = new CUARTController(port, speed);
-			m_display = new CNextion(serial, brightness, displayClock, utc, dateFormat, timeFormat, idleBrightness, screenLayout, tempInF);
-		}
+		ISerialPort* serial = nullptr;
+		if (port == "modem")
+			serial = m_msp = new CModemSerialPort(m_conf.getMQTTHostName());
+		else
+			serial = new CUARTController(port, speed);
+
+		CNextion* nextion = new CNextion(serial, brightness, displayClock, utc, dateFormat, timeFormat, idleBrightness, screenLayout, tempInF);
+		// The disk whose free space is shown: the one holding the
+		// groups file, or else this program's config
+		nextion->setDIY(groupsFile, sleepWhenIdle, groupsFile.empty() ? m_conf.getFile() : groupsFile, dmrIdFile, nxdnIdFile);
+		m_display = nextion;
 	} else if (type == "LCDproc") {
 		std::string address       = m_conf.getLCDprocAddress();
 		unsigned int port         = m_conf.getLCDprocPort();
@@ -604,7 +624,8 @@ void CMMDVMDisplay::readInfo(const std::string& text)
 			return;
 		}
 
-		if (j.contains("Programs") && j["Programs"].is_array()) {
+		// No program running comes as null
+		if (j.contains("Programs") && (j["Programs"].is_array() || j["Programs"].is_null())) {
 			LogDebug("Identified as a Programs message");
 			parsePrograms(j["Programs"]);
 			return;
@@ -613,6 +634,12 @@ void CMMDVMDisplay::readInfo(const std::string& text)
 		if (j.contains("Addresses") && j["Addresses"].is_array()) {
 			LogDebug("Identified as an Addresses message");
 			parseAddresses(j["Addresses"]);
+			return;
+		}
+
+		if (j.contains("DMRGateway") && j["DMRGateway"].is_object()) {
+			LogDebug("Identified as a DMRGateway Config message");
+			parseGatewayConfig(j["DMRGateway"]);
 			return;
 		}
 
@@ -772,6 +799,8 @@ void CMMDVMDisplay::parseDStar(const nlohmann::json& json)
 	}
 }
 
+static bool getUnsigned(const nlohmann::json& j, const char* key, unsigned int& value);
+
 void CMMDVMDisplay::parseDMR(const nlohmann::json& json)
 {
 	assert(m_display != nullptr);
@@ -791,6 +820,12 @@ void CMMDVMDisplay::parseDMR(const nlohmann::json& json)
 			int dst_id           = json["dst_id"];
 			std::string group    = json["group"];
 			std::string source   = json["source"] == "rf" ? "R" : "N";
+
+			// The caller's details first, for a display that shows them
+			// with the call (0: not known)
+			unsigned int src_id = 0U;
+			getUnsigned(json, "src_id", src_id);
+			m_display->writeDMRCaller(slot, src_id);
 
 			m_display->writeDMR(slot, src_info, group == "yes", dst_id, source);
 		} else if (action == "end" || action == "lost") {
@@ -881,6 +916,10 @@ void CMMDVMDisplay::parseNXDN(const nlohmann::json& json)
 			int dst_id           = json["dst_id"];
 			std::string group    = json["group"];
 			std::string source   = json["source"] == "rf" ? "R" : "N";
+
+			unsigned int src_id = 0U;
+			getUnsigned(json, "src_id", src_id);
+			m_display->writeNXDNCaller(src_id);
 
 			m_display->writeNXDN(src_info, group == "yes", dst_id, source);
 		} else if (action == "end" || action == "lost") {
@@ -980,6 +1019,23 @@ void CMMDVMDisplay::parseCPU(const nlohmann::json& json)
 void CMMDVMDisplay::parsePrograms(const nlohmann::json& json)
 {
 	assert(m_display != nullptr);
+
+	std::vector<std::string> running;
+
+	try {
+		if (json.is_array()) {
+			for (const auto& it : json) {
+				if (it.is_object() && it.contains("name") && it["name"].is_string())
+					running.push_back(it["name"].get<std::string>());
+			}
+		}
+	}
+	catch (nlohmann::json::exception& ex) {
+		LogError("Error parsing Programs - %s", ex.what());
+		return;
+	}
+
+	m_display->writePrograms(running);
 }
 
 void CMMDVMDisplay::parseAddresses(const nlohmann::json& json)
@@ -1057,6 +1113,17 @@ static bool getUnsigned(const nlohmann::json& j, const char* key, unsigned int& 
 	return true;
 }
 
+static bool isEnabled(const nlohmann::json& json, const char* section)
+{
+	assert(section != nullptr);
+
+	if (!json.contains(section) || !json[section].is_object())
+		return false;
+
+	unsigned int enable = 0U;
+	return getUnsigned(json[section], "Enable", enable) && (enable == 1U);
+}
+
 void CMMDVMDisplay::parseHostConfig(const nlohmann::json& json)
 {
 	assert(m_display != nullptr);
@@ -1089,7 +1156,6 @@ void CMMDVMDisplay::parseHostConfig(const nlohmann::json& json)
 		if (json.contains("Modem") && json["Modem"].is_object()) {
 			unsigned int rxFrequency = 0U;
 			unsigned int txFrequency = 0U;
-			std::string location = "?";
 
 			const nlohmann::json j = json["Modem"];
 
@@ -1100,21 +1166,66 @@ void CMMDVMDisplay::parseHostConfig(const nlohmann::json& json)
 				complete = false;
 			}
 
-			// if (j.contains("Location")) {
-			//	std::string loc = j["Location"];
-			//	location = loc;
-			// }
-
-			m_display->writeInfo(rxFrequency, txFrequency, location);
+			m_rxFrequency = rxFrequency;
+			m_txFrequency = txFrequency;
+			m_display->writeInfo(rxFrequency, txFrequency, m_location);
 		}
+
+		// The modes and networks enabled
+		CHostModes modes;
+		modes.dstar    = isEnabled(json, "D-Star");
+		modes.dmr      = isEnabled(json, "DMR");
+		modes.ysf      = isEnabled(json, "System Fusion");
+		modes.p25      = isEnabled(json, "P25");
+		modes.nxdn     = isEnabled(json, "NXDN");
+		modes.dstarNet = isEnabled(json, "D-Star Network");
+		modes.dmrNet   = isEnabled(json, "DMR Network");
+		modes.ysfNet   = isEnabled(json, "System Fusion Network");
+		modes.p25Net   = isEnabled(json, "P25 Network");
+		modes.nxdnNet  = isEnabled(json, "NXDN Network");
+		m_display->writeModes(modes);
 	}
 	catch (std::exception& ex) {
 		LogError("Error parsing Host Config - %s", ex.what());
 		return;
 	}
 
-	// Stop polling the Host config data
-	if (complete)
+	m_hostComplete = complete;
+	stopConfigPolling();
+}
+
+void CMMDVMDisplay::parseGatewayConfig(const nlohmann::json& json)
+{
+	assert(m_display != nullptr);
+
+	try {
+		if (!json.contains("Info") || !json["Info"].is_object())
+			return;
+
+		const nlohmann::json j = json["Info"];
+		if (!j.contains("Location") || !j["Location"].is_string())
+			return;
+
+		std::string location = j["Location"].get<std::string>();
+		if (location.empty() || (location == m_location))
+			return;
+
+		m_location = location;
+		m_display->writeInfo(m_rxFrequency, m_txFrequency, m_location);
+	}
+	catch (std::exception& ex) {
+		LogError("Error parsing DMRGateway Config - %s", ex.what());
+		return;
+	}
+
+	stopConfigPolling();
+}
+
+// Polling stops once the host's config is complete and the location is
+// known, or not to be had (no DMRGateway)
+void CMMDVMDisplay::stopConfigPolling()
+{
+	if (m_hostComplete && ((m_location != "?") || (m_locationTries >= 8U)))
 		m_confTimer.stop();
 }
 
@@ -1124,6 +1235,13 @@ void CMMDVMDisplay::pollHostConfig()
 	std::string command = "Config " + m_hostConfName;
 
 	m_mqtt->publish(topic, command);
+
+	if ((m_location == "?") && (m_locationTries < 8U)) {
+		m_mqtt->publish(topic, "Config DMRGateway");
+		m_locationTries++;
+	}
+
+	stopConfigPolling();
 }
 
 void CMMDVMDisplay::pollHostAddresses()

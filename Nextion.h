@@ -20,13 +20,22 @@
 #define	NEXTION_H
 
 #include "Display.h"
+#include "IdLookup.h"
 #include "Defines.h"
 #include "RingBuffer.h"
 #include "SerialPort.h"
 #include "Mutex.h"
 #include "Timer.h"
 #include "Thread.h"
+
+#include <ctime>
+#include <deque>
+#include <map>
 #include <string>
+#include <vector>
+
+// The pages of the ON7LDS layouts, numbered as the screen asks for them
+const unsigned int NEXTION_PAGES = 9U;
 
 class CNextion : public CDisplay
 {
@@ -37,6 +46,11 @@ public:
 	virtual bool open() override;
 
 	virtual void close() override;
+
+	// For the ON7LDS DIY layout (3) only: the talkgroup names file, the
+	// seconds idle before the screen sleeps (0 = never), and a file on the
+	// disk whose free space is shown
+	void setDIY(const std::string& groupsFile, unsigned int sleepWhenIdle, const std::string& diskPath, const std::string& dmrIdFile, const std::string& nxdnIdFile);
 
 protected:
 	virtual void setIdleInt() override;
@@ -85,6 +99,10 @@ protected:
 	virtual void writeCPUInt(float temperature, float frequency, float load) override;
 	virtual void writeInfoInt(unsigned int rxFrequency, unsigned int txFrequency, const std::string& location) override;
 	virtual void writeIPInt(const std::string& name, const std::string& ipV4, const std::string& ipV6) override;
+	virtual void writeModesInt(const CHostModes& modes) override;
+	virtual void writeProgramsInt(const std::vector<std::string>& running) override;
+	virtual void writeDMRCallerInt(unsigned int slotNo, unsigned int id) override;
+	virtual void writeNXDNCallerInt(unsigned int id) override;
 
 	virtual void writeCommandInt(const std::string& command) override;
 
@@ -121,7 +139,55 @@ private:
 	bool           m_redrawIdle;
 	CTimer         m_waitingTimer;
 
+	// The ON7LDS DIY layout (3): what the screen asks for, and what it
+	// shows beyond the other layouts
+	typedef std::map<std::string, std::string> CFields;	// "t4.txt" -> its instruction
+	unsigned int   m_page;					// the page last shown
+	CFields        m_fields[NEXTION_PAGES];			// each page's fields as last sent
+	std::deque<CFields> m_heard[NEXTION_PAGES];		// each page's last calls, newest first
+	bool           m_inCall[NEXTION_PAGES];
+	bool           m_held;					// the screen is on its own pages
+	bool           m_asleep;
+	unsigned int   m_sleepWhenIdle;
+	CTimer         m_sleepTimer;
+	CHostModes     m_modes;
+	bool           m_modesKnown;
+	std::vector<std::string> m_running;
+	bool           m_programsKnown;
+	std::string    m_groupsFile;
+	std::map<unsigned int, std::string> m_groups;
+	time_t         m_groupsTime;
+	CTimer         m_groupsTimer;
+	std::string    m_diskPath;
+	std::string    m_model;
+	std::string    m_serialNo;
+	CIdLookup*     m_dmrIds;
+	CIdLookup*     m_nxdnIds;
+	CTimer         m_rtcTimer;
+	CIdEntry       m_dmrCaller;				// looked up, to send with the call
+	bool           m_dmrCallerSet;
+	CIdEntry       m_nxdnCaller;
+	bool           m_nxdnCallerSet;
+
 	void sendCommand(const std::string& command);
+	void queueCommand(const std::string& command);
+	void track(const std::string& command);
+	void callStatus(unsigned int status);
+	void screenCommand(const unsigned char* data, unsigned int length);
+	void sendScreenData(unsigned int page);
+	void sendLastHeard(unsigned int page, unsigned int count);
+	void sendModel();
+	void sendModes(bool direct);
+	bool isRunning(const char* name1, const char* name2 = nullptr) const;
+	void sendTGName(unsigned int slotNo, bool group, unsigned int dst);
+	void readGroups();
+	void sendDiskFree();
+	static std::string clean(const std::string& text);
+	void sendRTC();
+	void sendDMRCaller();
+	void sendNXDNCaller();
+	void wake();
+	void idleTouched();
 	void processReply(const unsigned char* data, unsigned int length);
 	void sendCommandAction(unsigned int status);
 	void sendCPU();
