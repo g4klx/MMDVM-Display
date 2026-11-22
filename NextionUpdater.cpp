@@ -379,9 +379,10 @@ void CNextionUpdater::readDisplay(const unsigned char* data, unsigned int length
 
 void CNextionUpdater::onDisplay(const unsigned char* data, unsigned int length)
 {
-	assert(data != nullptr);
-	assert(length > 0U);
-	assert(driver != nullptr);
+	// An empty message (mosquitto passes no data for one) or one before
+	// the driver exists is ignored: it is not ours to abort on
+	if ((data == nullptr) || (length == 0U) || (driver == nullptr))
+		return;
 
 	driver->readDisplay(data, length);
 }

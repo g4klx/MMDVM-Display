@@ -257,7 +257,7 @@ void CLCDproc::writeDStarInt(const std::string& my1, const std::string& my2, con
 	socketPrintf(m_socketfd, "screen_set DStar -priority foreground");
 	socketPrintf(m_socketfd, "widget_set DStar Mode 1 1 \"D-Star\"");
 
-	::sprintf(m_displayBuffer1, "%.8s", your.c_str());
+	::snprintf(m_displayBuffer1, sizeof(m_displayBuffer1), "%.8s", your.c_str());
 
 	char *p = m_displayBuffer1;
 	for (; *p; ++p) {
@@ -266,7 +266,7 @@ void CLCDproc::writeDStarInt(const std::string& my1, const std::string& my2, con
 	}
 
 	if (reflector != "        ")
-		::sprintf(m_displayBuffer2, " via %.8s", reflector.c_str());
+		::snprintf(m_displayBuffer2, sizeof(m_displayBuffer2), " via %.8s", reflector.c_str());
 	else
 		::memset(m_displayBuffer2, 0, BUFFER_MAX_LEN);
 
@@ -544,7 +544,7 @@ void CLCDproc::writeGeneralWidgets()
 {
 	char id[20U];
 	if (m_id != 0U)
-		::sprintf(id, "%u", m_id);
+		::snprintf(id, sizeof(id), "%u", m_id);
 	else
 		id[0U] = '\0';
 
@@ -607,14 +607,17 @@ void CLCDproc::clockInt(unsigned int ms)
 
 	// If something was received from the server...
 	if (FD_ISSET(m_socketfd, &m_readfds)) {
-		m_recvsize = ::recv(m_socketfd, m_buffer, BUFFER_MAX_LEN, 0);
+		// One byte kept for the terminator
+		m_recvsize = ::recv(m_socketfd, m_buffer, BUFFER_MAX_LEN - 1, 0);
 
-		if (m_recvsize == -1)
+		if (m_recvsize < 0)
 			LogError("LCDproc, cannot receive information");
 
-		m_buffer[m_recvsize] = '\0';
+		// Nothing received (an error, or the server closed): no reply to read
+		m_buffer[m_recvsize > 0 ? m_recvsize : 0] = '\0';
 
-		char *argv[256];
+		// The words of a reply: at most one for every two bytes
+		char *argv[BUFFER_MAX_LEN / 2 + 1];
 		size_t len = strlen(m_buffer);
 
 		// Now split the string into tokens...
@@ -628,7 +631,7 @@ void CLCDproc::clockInt(unsigned int ms)
 					m_buffer[i] = 0;
 					break;
 				default:	/* regular chars, keep tokenizing */
-					if (newtoken)
+					if (newtoken && argc < (int)(sizeof(argv) / sizeof(argv[0])))
 						argv[argc++] = m_buffer + i;
 					newtoken = 0;
 					break;
@@ -637,21 +640,28 @@ void CLCDproc::clockInt(unsigned int ms)
 					m_buffer[i] = 0;
 					if (argc > 0) {
 						if (0 == strcmp(argv[0], "listen")) {
-							LogDebug("LCDproc, the %s screen is displayed", argv[1]);
+							LogDebug("LCDproc, the %s screen is displayed", argc > 1 ? argv[1] : "");
 						} else if (0 == strcmp(argv[0], "ignore")) {
-							LogDebug("LCDproc, the %s screen is hidden", argv[1]);
+							LogDebug("LCDproc, the %s screen is hidden", argc > 1 ? argv[1] : "");
 						} else if (0 == strcmp(argv[0], "key")) {
-							LogDebug("LCDproc, Key %s", argv[1]);
+							LogDebug("LCDproc, Key %s", argc > 1 ? argv[1] : "");
 						} else if (0 == strcmp(argv[0], "menu")) {
 						} else if (0 == strcmp(argv[0], "connect")) {
 		 					// connect LCDproc 0.5.7 protocol 0.3 lcd wid 16 hgt 2 cellwid 5 cellhgt 8
 							int a;
 
 							for (a = 1; a < argc; a++) {
-								if (0 == strcmp(argv[a], "wid"))
-									m_cols = atoi(argv[++a]);
-								else if (0 == strcmp(argv[a], "hgt"))
-									m_rows = atoi(argv[++a]);
+								// A number only if one follows; a display of
+								// 8 to 80 columns (the layouts take 6 off the width) and 1 to 16 rows
+								if (0 == strcmp(argv[a], "wid") && (a + 1 < argc)) {
+									int cols = atoi(argv[++a]);
+									if (cols >= 8 && cols <= 80)
+										m_cols = cols;
+								} else if (0 == strcmp(argv[a], "hgt") && (a + 1 < argc)) {
+									int rows = atoi(argv[++a]);
+									if (rows >= 1 && rows <= 16)
+										m_rows = rows;
+								}
 								else if (0 == strcmp(argv[a], "cellwid")) {
 									//lcd_cellwid = atoi(argv[++a]);
 								} else if (0 == strcmp(argv[a], "cellhgt")) {
@@ -666,13 +676,14 @@ void CLCDproc::clockInt(unsigned int ms)
 						} else if (0 == strcmp(argv[0], "success")) {
 							//LogDebug("LCDproc, command successful");
 						} else if (0 == strcmp(argv[0], "huh?")) {
-							::sprintf(m_displayBuffer1, "LCDproc, command failed:");
-							::sprintf(m_displayBuffer2, " ");
+							::snprintf(m_displayBuffer1, sizeof(m_displayBuffer1), "LCDproc, command failed:");
+							::snprintf(m_displayBuffer2, sizeof(m_displayBuffer2), " ");
 
+							// Bounded: as much of the reply as fits
 							int j;
 							for (j = 1; j < argc; j++) {
-								::strcat(m_displayBuffer1, m_displayBuffer2);
-								::strcat(m_displayBuffer1, argv[j]);
+								::strncat(m_displayBuffer1, m_displayBuffer2, sizeof(m_displayBuffer1) - ::strlen(m_displayBuffer1) - 1U);
+								::strncat(m_displayBuffer1, argv[j], sizeof(m_displayBuffer1) - ::strlen(m_displayBuffer1) - 1U);
 							}
 							LogDebug("%s", m_displayBuffer1);
 						}

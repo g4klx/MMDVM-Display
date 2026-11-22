@@ -72,6 +72,16 @@ const unsigned int MAX_REPLY_LENGTH = 250U;
 // Nextion and of a modem passing them on.
 const unsigned int MAX_BATCH_LENGTH = 120U;
 
+// A byte a text field may hold, from a file or another program: not a
+// quote or backslash (they end or escape the text), not a control byte
+// or DEL, and never 0xFF, three of which end a Nextion command (a UTF-8
+// name, from the ID lists, never holds one).
+static bool fieldChar(char c)
+{
+	unsigned char u = (unsigned char)c;
+	return (c != '"') && (c != '\\') && (u >= 0x20U) && (u != 0x7FU) && (u != 0xFFU);
+}
+
 CNextion::CNextion(ISerialPort* serial, unsigned int brightness, bool displayClock, bool utc, const std::string& dateFormat, const std::string& timeFormat, unsigned int idleBrightness, unsigned int screenLayout, bool displayTempInF) :
 CDisplay(),
 m_callsign(),
@@ -81,8 +91,8 @@ m_ipAddress(),
 m_temperature(-1.0F),
 m_frequency(-1.0F),
 m_load(-1.0F),
-m_rxFrequency(-1.0F),
-m_txFrequency(-1.0F),
+m_rxFrequency(-1.0),
+m_txFrequency(-1.0),
 m_location("?"),
 m_serial(serial),
 m_brightness(brightness),
@@ -99,6 +109,7 @@ m_output(4000U, "Nextion buffer"),
 m_mutex(),
 m_reply(nullptr),
 m_replyLength(0U),
+m_replyFFs(0U),
 m_waiting(false),
 m_pending(0U),
 m_redrawIdle(false),
@@ -160,7 +171,9 @@ bool CNextion::open()
 	bool ret = m_serial->open();
 	if (!ret) {
 		LogError("Cannot open the port for the Nextion display");
+		// Freed once: the destructor deletes m_serial too
 		delete m_serial;
+		m_serial = nullptr;
 		return false;
 	}
 
@@ -201,23 +214,23 @@ void CNextion::setIdleInt()
 	sendCommandAction(11U);
 
 	if (m_brightness > 0U) {
-		::sprintf(command, "dim=%u", m_idleBrightness);
+		::snprintf(command, sizeof(command), "dim=%u", m_idleBrightness);
 		sendCommand(command);
 	}
 
 	if (m_id != 0U)
-		::sprintf(command, "t0.txt=\"%s/%u\"", m_callsign.c_str(), m_id);
+		::snprintf(command, sizeof(command), "t0.txt=\"%s/%u\"", m_callsign.c_str(), m_id);
 	else
-		::sprintf(command, "t0.txt=\"%s\"", m_callsign.c_str());
+		::snprintf(command, sizeof(command), "t0.txt=\"%s\"", m_callsign.c_str());
 	sendCommand(command);
 
 	if (m_screenLayout & LAYOUT_DIY) {
-		::sprintf(command, "t4.txt=\"%s\"", m_callsign.c_str());
+		::snprintf(command, sizeof(command), "t4.txt=\"%s\"", m_callsign.c_str());
 		sendCommand(command);
 		if (m_id != 0U)
-			::sprintf(command, "t5.txt=\"%u\"", m_id);
+			::snprintf(command, sizeof(command), "t5.txt=\"%u\"", m_id);
 		else
-			::sprintf(command, "t5.txt=\"\"");
+			::snprintf(command, sizeof(command), "t5.txt=\"\"");
 		sendCommand(command);
 		sendCommandAction(17U);
 	} else {
@@ -228,24 +241,33 @@ void CNextion::setIdleInt()
 	// The address next: a layout shows its own start-up texts until it
 	// has the status and the address.
 	if (!m_ipAddress.empty())
-		::sprintf(command, "t3.txt=\"%s\"", m_ipAddress.c_str());
+		::snprintf(command, sizeof(command), "t3.txt=\"%s\"", m_ipAddress.c_str());
 	else
-		::sprintf(command, "t3.txt=\"(ip unknown)\"");
+		::snprintf(command, sizeof(command), "t3.txt=\"(ip unknown)\"");
 	sendCommand(command);
 	sendCommandAction(16U);
 
 	sendCPU();
 
-	if (m_rxFrequency != -1.0F) {
-		::sprintf(command, "t30.txt=\"%.4f MHz\"", m_rxFrequency);
+	// Layout 3 takes the frequency as MMDVMHost and NextionDriver sent it:
+	// MHz to six places, with no unit ("438.600000"), as its screens show
+	// "MHz" themselves; the other layouts show "438.6000 MHz"
+	if (m_rxFrequency != -1.0) {
+		if (m_screenLayout & LAYOUT_DIY)
+			::snprintf(command, sizeof(command), "t30.txt=\"%3.6f\"", m_rxFrequency);
+		else
+			::snprintf(command, sizeof(command), "t30.txt=\"%.4f MHz\"", m_rxFrequency);
 		sendCommand(command);
 	} else {
 		sendCommand("t30.txt=\"?\"");
 	}
 	sendCommandAction(20U);
 
-	if (m_txFrequency != -1.0F) {
-		::sprintf(command, "t32.txt=\"%.4f MHz\"", m_txFrequency);
+	if (m_txFrequency != -1.0) {
+		if (m_screenLayout & LAYOUT_DIY)
+			::snprintf(command, sizeof(command), "t32.txt=\"%3.6f\"", m_txFrequency);
+		else
+			::snprintf(command, sizeof(command), "t32.txt=\"%.4f MHz\"", m_txFrequency);
 		sendCommand(command);
 	} else {
 		sendCommand("t32.txt=\"?\"");
@@ -277,11 +299,11 @@ void CNextion::setErrorInt()
 
 	char command[20];
 	if (m_brightness>0) {
-		::sprintf(command, "dim=%u", m_brightness);
+		::snprintf(command, sizeof(command), "dim=%u", m_brightness);
 		sendCommand(command);
 	}
 
-	::sprintf(command, "t0.txt=\"ERROR\"");
+	::snprintf(command, sizeof(command), "t0.txt=\"ERROR\"");
 	sendCommandAction(13U);
 
 	m_clockDisplayTimer.stop();
@@ -299,7 +321,7 @@ void CNextion::setLockoutInt()
 
 	char command[20];
 	if (m_brightness>0) {
-		::sprintf(command, "dim=%u", m_brightness);
+		::snprintf(command, sizeof(command), "dim=%u", m_brightness);
 		sendCommand(command);
 	}
 
@@ -321,14 +343,14 @@ void CNextion::setQuitInt()
 
 	char command[100];
 	if (m_brightness>0) {
-		::sprintf(command, "dim=%u", m_idleBrightness);
+		::snprintf(command, sizeof(command), "dim=%u", m_idleBrightness);
 		sendCommand(command);
 	}
 
 	if (!m_ipAddress.empty())
-		::sprintf(command, "t3.txt=\"%s\"", m_ipAddress.c_str());
+		::snprintf(command, sizeof(command), "t3.txt=\"%s\"", m_ipAddress.c_str());
 	else
-		::sprintf(command, "t3.txt=\"(ip unknown)\"");
+		::snprintf(command, sizeof(command), "t3.txt=\"(ip unknown)\"");
 	sendCommand(command);
 	sendCommandAction(16U);
 
@@ -349,20 +371,20 @@ void CNextion::writeDStarInt(const std::string& my1, const std::string& my2, con
 
 	char text[50U];
 	if (m_brightness>0) {
-		::sprintf(text, "dim=%u", m_brightness);
+		::snprintf(text, sizeof(text), "dim=%u", m_brightness);
 		sendCommand(text);
 	}
 
-	::sprintf(text, "t0.txt=\"%s %.8s/%4.4s\"", type.c_str(), my1.c_str(), my2.c_str());
+	::snprintf(text, sizeof(text), "t0.txt=\"%s %.8s/%4.4s\"", type.c_str(), my1.c_str(), my2.c_str());
 	sendCommand(text);
 	sendCommandAction(42U);
 
-	::sprintf(text, "t1.txt=\"%.8s\"", your.c_str());
+	::snprintf(text, sizeof(text), "t1.txt=\"%.8s\"", your.c_str());
 	sendCommand(text);
 	sendCommandAction(45U);
 
 	if (reflector != "        ") {
-		::sprintf(text, "t2.txt=\"via %.8s\"", reflector.c_str());
+		::snprintf(text, sizeof(text), "t2.txt=\"via %.8s\"", reflector.c_str());
 		sendCommand(text);
 		sendCommandAction(46U);
 	}
@@ -375,7 +397,7 @@ void CNextion::writeDStarInt(const std::string& my1, const std::string& my2, con
 void CNextion::writeDStarRSSIInt(int rssi)
 {
 	char text[25U];
-	::sprintf(text, "t3.txt=\"%ddBm\"", rssi);
+	::snprintf(text, sizeof(text), "t3.txt=\"%ddBm\"", rssi);
 	sendCommand(text);
 	sendCommandAction(47U);
 }
@@ -383,15 +405,15 @@ void CNextion::writeDStarRSSIInt(int rssi)
 void CNextion::writeDStarBERInt(float ber)
 {
 	char text[25U];
-	::sprintf(text, "t4.txt=\"%.1f%%\"", ber);
+	::snprintf(text, sizeof(text), "t4.txt=\"%.1f%%\"", ber);
 	sendCommand(text);
 	sendCommandAction(48U);
 }
 
 void CNextion::writeDStarTextInt(const std::string& text)
 {
-	char buffer[25U];
-	::sprintf(buffer, "t5.txt=\"%s\"", text.c_str());
+	char buffer[40U];
+	::snprintf(buffer, sizeof(buffer), "t5.txt=\"%s\"", text.c_str());
 
 	sendCommand(buffer);
 	sendCommandAction(49U);
@@ -438,14 +460,14 @@ void CNextion::writeDMRInt(unsigned int slotNo, const std::string& src, bool gro
 		}
 	}
 
-	char text[50U];
+	char text[100U];
 	if (m_brightness>0) {
-		::sprintf(text, "dim=%u", m_brightness);
+		::snprintf(text, sizeof(text), "dim=%u", m_brightness);
 		sendCommand(text);
 	}
 
 	if (slotNo == 1U) {
-		::sprintf(text, "t0.txt=\"1 %s %s\"", type.c_str(), src.c_str());
+		::snprintf(text, sizeof(text), "t0.txt=\"1 %s %s\"", type.c_str(), src.c_str());
 
 		if (m_screenLayout & LAYOUT_TA_ENABLE) {
 			if (m_screenLayout & LAYOUT_TA_COLOUR)
@@ -465,13 +487,13 @@ void CNextion::writeDMRInt(unsigned int slotNo, const std::string& src, bool gro
 
 		sendCommandAction(62U);
 
-		::sprintf(text, "t1.txt=\"%s%u\"", group ? "TG" : "", dst);
+		::snprintf(text, sizeof(text), "t1.txt=\"%s%u\"", group ? "TG" : "", dst);
 		sendCommand(text);
 		// Before the status: the layout shows the name if there is one
 		sendTGName(slotNo, group, dst);
 		sendCommandAction(65U);
 	} else {
-		::sprintf(text, "t2.txt=\"2 %s %s\"", type.c_str(), src.c_str());
+		::snprintf(text, sizeof(text), "t2.txt=\"2 %s %s\"", type.c_str(), src.c_str());
 
 		if (m_screenLayout & LAYOUT_TA_ENABLE) {
 			if (m_screenLayout & LAYOUT_TA_COLOUR)
@@ -489,7 +511,7 @@ void CNextion::writeDMRInt(unsigned int slotNo, const std::string& src, bool gro
 
 		sendCommandAction(70U);
 
-		::sprintf(text, "t3.txt=\"%s%u\"", group ? "TG" : "", dst);
+		::snprintf(text, sizeof(text), "t3.txt=\"%s%u\"", group ? "TG" : "", dst);
 		sendCommand(text);
 		sendTGName(slotNo, group, dst);
 		sendCommandAction(73U);
@@ -504,12 +526,12 @@ void CNextion::writeDMRRSSIInt(unsigned int slotNo, int rssi)
 {
 	if (slotNo == 1U) {
 		char text[25U];
-		::sprintf(text, "t4.txt=\"%ddBm\"", rssi);
+		::snprintf(text, sizeof(text), "t4.txt=\"%ddBm\"", rssi);
 		sendCommand(text);
 		sendCommandAction(66U);
 	} else {
 		char text[25U];
-		::sprintf(text, "t5.txt=\"%ddBm\"", rssi);
+		::snprintf(text, sizeof(text), "t5.txt=\"%ddBm\"", rssi);
 		sendCommand(text);
 		sendCommandAction(74U);
 	}
@@ -521,8 +543,8 @@ void CNextion::writeDMRTAInt(unsigned int slotNo, const std::string& talkerAlias
 		return;
 
 	if (slotNo == 1U) {
-		char text[50U];
-		::sprintf(text, "t8.txt=\"%s\"", talkerAlias.c_str());
+		char text[64U];
+		::snprintf(text, sizeof(text), "t8.txt=\"%s\"", talkerAlias.c_str());
 
 		if (m_screenLayout & LAYOUT_TA_FONTSIZE) {
 			if (talkerAlias.size() > (16U-4U))
@@ -539,8 +561,8 @@ void CNextion::writeDMRTAInt(unsigned int slotNo, const std::string& talkerAlias
 		sendCommand(text);
 		sendCommandAction(63U);
 	} else {
-		char text[50U];
-		::sprintf(text, "t9.txt=\"%s\"", talkerAlias.c_str());
+		char text[64U];
+		::snprintf(text, sizeof(text), "t9.txt=\"%s\"", talkerAlias.c_str());
 
 		if (m_screenLayout & LAYOUT_TA_FONTSIZE) {
 			if (talkerAlias.size() > (16U-4U))
@@ -563,12 +585,12 @@ void CNextion::writeDMRBERInt(unsigned int slotNo, float ber)
 {
 	if (slotNo == 1U) {
 		char text[25U];
-		::sprintf(text, "t6.txt=\"%.1f%%\"", ber);
+		::snprintf(text, sizeof(text), "t6.txt=\"%.1f%%\"", ber);
 		sendCommand(text);
 		sendCommandAction(67U);
 	} else {
 		char text[25U];
-		::sprintf(text, "t7.txt=\"%.1f%%\"", ber);
+		::snprintf(text, sizeof(text), "t7.txt=\"%.1f%%\"", ber);
 		sendCommand(text);
 		sendCommandAction(75U);
 	}
@@ -620,22 +642,22 @@ void CNextion::writeFusionInt(const std::string& source, const std::string& dest
 		sendCommandAction(4U);
 	}
 
-	char text[30U];
+	char text[50U];
 	if (m_brightness>0) {
-		::sprintf(text, "dim=%u", m_brightness);
+		::snprintf(text, sizeof(text), "dim=%u", m_brightness);
 		sendCommand(text);
 	}
 
-	::sprintf(text, "t0.txt=\"%s %.10s\"", type.c_str(), source.c_str());
+	::snprintf(text, sizeof(text), "t0.txt=\"%s %.10s\"", type.c_str(), source.c_str());
 	sendCommand(text);
 	sendCommandAction(82U);
 
-	::sprintf(text, "t1.txt=\"DG-ID %u\"", dgid);
+	::snprintf(text, sizeof(text), "t1.txt=\"DG-ID %u\"", dgid);
 	sendCommand(text);
 	sendCommandAction(83U);
 
 	if (origin != "          ") {
-		::sprintf(text, "t2.txt=\"at %.10s\"", origin.c_str());
+		::snprintf(text, sizeof(text), "t2.txt=\"at %.10s\"", origin.c_str());
 		sendCommand(text);
 		sendCommandAction(84U);
 	}
@@ -648,7 +670,7 @@ void CNextion::writeFusionInt(const std::string& source, const std::string& dest
 void CNextion::writeFusionRSSIInt(int rssi)
 {
 	char text[25U];
-	::sprintf(text, "t3.txt=\"%ddBm\"", rssi);
+	::snprintf(text, sizeof(text), "t3.txt=\"%ddBm\"", rssi);
 	sendCommand(text);
 	sendCommandAction(85U);
 }
@@ -656,7 +678,7 @@ void CNextion::writeFusionRSSIInt(int rssi)
 void CNextion::writeFusionBERInt(float ber)
 {
 	char text[25U];
-	::sprintf(text, "t4.txt=\"%.1f%%\"", ber);
+	::snprintf(text, sizeof(text), "t4.txt=\"%.1f%%\"", ber);
 	sendCommand(text);
 	sendCommandAction(86U);
 }
@@ -678,17 +700,17 @@ void CNextion::writeP25Int(const std::string& source, bool group, unsigned int d
 		sendCommandAction(5U);
 	}
 
-	char text[30U];
+	char text[50U];
 	if (m_brightness>0) {
-		::sprintf(text, "dim=%u", m_brightness);
+		::snprintf(text, sizeof(text), "dim=%u", m_brightness);
 		sendCommand(text);
 	}
 
-	::sprintf(text, "t0.txt=\"%s %.10s\"", type.c_str(), source.c_str());
+	::snprintf(text, sizeof(text), "t0.txt=\"%s %.10s\"", type.c_str(), source.c_str());
 	sendCommand(text);
 	sendCommandAction(102U);
 
-	::sprintf(text, "t1.txt=\"%s%u\"", group ? "TG" : "", dest);
+	::snprintf(text, sizeof(text), "t1.txt=\"%s%u\"", group ? "TG" : "", dest);
 	sendCommand(text);
 	sendCommandAction(103U);
 
@@ -700,7 +722,7 @@ void CNextion::writeP25Int(const std::string& source, bool group, unsigned int d
 void CNextion::writeP25RSSIInt(int rssi)
 {
 	char text[25U];
-	::sprintf(text, "t2.txt=\"%ddBm\"", rssi);
+	::snprintf(text, sizeof(text), "t2.txt=\"%ddBm\"", rssi);
 	sendCommand(text);
 	sendCommandAction(104U);
 }
@@ -708,7 +730,7 @@ void CNextion::writeP25RSSIInt(int rssi)
 void CNextion::writeP25BERInt(float ber)
 {
 	char text[25U];
-	::sprintf(text, "t3.txt=\"%.1f%%\"", ber);
+	::snprintf(text, sizeof(text), "t3.txt=\"%.1f%%\"", ber);
 	sendCommand(text);
 	sendCommandAction(105U);
 }
@@ -729,18 +751,18 @@ void CNextion::writeNXDNInt(const std::string& source, bool group, unsigned int 
 		sendCommandAction(6U);
 	}
 
-	char text[30U];
+	char text[50U];
 	if (m_brightness>0) {
-		::sprintf(text, "dim=%u", m_brightness);
+		::snprintf(text, sizeof(text), "dim=%u", m_brightness);
 		sendCommand(text);
 	}
 
-	::sprintf(text, "t0.txt=\"%s %.10s\"", type.c_str(), source.c_str());
+	::snprintf(text, sizeof(text), "t0.txt=\"%s %.10s\"", type.c_str(), source.c_str());
 	sendCommand(text);
 	sendNXDNCaller();
 	sendCommandAction(122U);
 
-	::sprintf(text, "t1.txt=\"%s%u\"", group ? "TG" : "", dest);
+	::snprintf(text, sizeof(text), "t1.txt=\"%s%u\"", group ? "TG" : "", dest);
 	sendCommand(text);
 	sendCommandAction(123U);
 
@@ -752,7 +774,7 @@ void CNextion::writeNXDNInt(const std::string& source, bool group, unsigned int 
 void CNextion::writeNXDNRSSIInt(int rssi)
 {
 	char text[25U];
-	::sprintf(text, "t2.txt=\"%ddBm\"", rssi);
+	::snprintf(text, sizeof(text), "t2.txt=\"%ddBm\"", rssi);
 	sendCommand(text);
 	sendCommandAction(124U);
 }
@@ -760,7 +782,7 @@ void CNextion::writeNXDNRSSIInt(int rssi)
 void CNextion::writeNXDNBERInt(float ber)
 {
 	char text[25U];
-	::sprintf(text, "t3.txt=\"%.1f%%\"", ber);
+	::snprintf(text, sizeof(text), "t3.txt=\"%.1f%%\"", ber);
 	sendCommand(text);
 	sendCommandAction(125U);
 }
@@ -783,11 +805,11 @@ void CNextion::writeFMInt(const std::string& status)
 
 	char text[100U];
 	if (m_brightness > 0) {
-		::sprintf(text, "dim=%u", m_brightness);
+		::snprintf(text, sizeof(text), "dim=%u", m_brightness);
 		sendCommand(text);
 	}
 
-	::sprintf(text, "t0.txt=\"%s\"", status.c_str());
+	::snprintf(text, sizeof(text), "t0.txt=\"%s\"", status.c_str());
 	sendCommand(text);
 	sendCommandAction(147U);
 
@@ -799,7 +821,7 @@ void CNextion::writeFMInt(const std::string& status)
 void CNextion::writeFMRSSIInt(int rssi)
 {
 	char text[25U];
-	::sprintf(text, "t2.txt=\"%ddBm\"", rssi);
+	::snprintf(text, sizeof(text), "t2.txt=\"%ddBm\"", rssi);
 	sendCommand(text);
 	sendCommandAction(148U);
 }
@@ -820,15 +842,15 @@ void CNextion::writePOCSAGInt(uint32_t ric, const std::string& message)
 
 	char text[200U];
 	if (m_brightness>0) {
-		::sprintf(text, "dim=%u", m_brightness);
+		::snprintf(text, sizeof(text), "dim=%u", m_brightness);
 		sendCommand(text);
 	}
 
-	::sprintf(text, "t0.txt=\"RIC: %u\"", ric);
+	::snprintf(text, sizeof(text), "t0.txt=\"RIC: %u\"", ric);
 	sendCommand(text);
 	sendCommandAction(132U);
 
-	::sprintf(text, "t1.txt=\"%s\"", message.c_str());
+	::snprintf(text, sizeof(text), "t1.txt=\"%s\"", message.c_str());
 	sendCommand(text);
 	sendCommandAction(133U);
 
@@ -890,9 +912,9 @@ void CNextion::sendCPU()
 	if ((m_screenLayout & LAYOUT_DIY) && (m_temperature != -1.0F)) {
 		if (m_displayTempInF) {
 			float val = (1.8F * m_temperature) + 32.0F;
-			::sprintf(command, "t20.txt=\"%2.1f %cF\"", val, 176);
+			::snprintf(command, sizeof(command), "t20.txt=\"%2.1f %cF\"", val, 176);
 		} else {
-			::sprintf(command, "t20.txt=\"%2.1f %cC\"", m_temperature, 176);
+			::snprintf(command, sizeof(command), "t20.txt=\"%2.1f %cC\"", m_temperature, 176);
 		}
 
 		sendCommand(command);
@@ -901,7 +923,7 @@ void CNextion::sendCPU()
 
 	if (m_frequency != -1.0F) {
 		// MMDVM-Info gives it in MHz
-		::sprintf(command, "t21.txt=\"%0.0f MHz\"", m_frequency);
+		::snprintf(command, sizeof(command), "t21.txt=\"%0.0f MHz\"", m_frequency);
 		sendCommand(command);
 	} else {
 		sendCommand("t21.txt=\"?\"");
@@ -910,10 +932,10 @@ void CNextion::sendCPU()
 	// The 1 minute load average, and it x 100 as a whole number for the
 	// layouts' bar (as NextionDriver sent them)
 	if (m_load != -1.0F) {
-		::sprintf(command, "t22.txt=\"%0.2f\"", m_load);
+		::snprintf(command, sizeof(command), "t22.txt=\"%0.2f\"", m_load);
 		sendCommand(command);
 
-		::sprintf(command, "cpuload.val=%d", int(m_load * 100.0F));
+		::snprintf(command, sizeof(command), "cpuload.val=%d", int(m_load * 100.0F));
 		sendCommand(command);
 	} else {
 		sendCommand("t22.txt=\"?\"");
@@ -927,8 +949,9 @@ void CNextion::sendCPU()
 void CNextion::writeInfoInt(unsigned int rxFrequency, unsigned int txFrequency, const std::string& location)
 {
 	// An unknown frequency (0) is shown as "?"
-	float rx = (rxFrequency != 0U) ? float(rxFrequency) / 1000000.0F : -1.0F;
-	float tx = (txFrequency != 0U) ? float(txFrequency) / 1000000.0F : -1.0F;
+	// double: a float holds 7 digits, and layout 3 shows 9 (438.600000)
+	double rx = (rxFrequency != 0U) ? double(rxFrequency) / 1000000.0 : -1.0;
+	double tx = (txFrequency != 0U) ? double(txFrequency) / 1000000.0 : -1.0;
 
 	if ((rx != m_rxFrequency) || (tx != m_txFrequency) || (location != m_location)) {
 		m_rxFrequency = rx;
@@ -1028,9 +1051,14 @@ void CNextion::clockInt(unsigned int ms)
 			m_reply[m_replyLength] = c;
 		m_replyLength++;
 
-		if ((m_replyLength >= 3U) && (c == 0xFFU) && (m_reply[m_replyLength - 2U] == 0xFFU) && (m_reply[m_replyLength - 3U] == 0xFFU)) {
+		// The FF FF FF at its end, counted as they come: past
+		// MAX_REPLY_LENGTH the bytes are not kept, so not read back
+		m_replyFFs = (c == 0xFFU) ? m_replyFFs + 1U : 0U;
+
+		if ((m_replyLength >= 3U) && (m_replyFFs >= 3U)) {
 			unsigned int length = m_replyLength - 3U;
 			m_replyLength = 0U;
+			m_replyFFs = 0U;
 
 			if (length > MAX_REPLY_LENGTH) {
 				LogWarning("Nextion message too long - %u bytes", length);
@@ -1214,8 +1242,13 @@ void CNextion::writeCommandInt(const std::string& command)
 
 void CNextion::close()
 {
-	m_serial->close();
-	delete m_serial;
+	// Freed once: MMDVM-Display calls close() and then deletes the display,
+	// whose destructor deletes m_serial too
+	if (m_serial != nullptr) {
+		m_serial->close();
+		delete m_serial;
+		m_serial = nullptr;
+	}
 }
 
 void CNextion::sendCommandAction(unsigned int status)
@@ -1224,7 +1257,7 @@ void CNextion::sendCommandAction(unsigned int status)
 		return;
 
 	char text[30U];
-	::sprintf(text, "MMDVM.status.val=%u", status);
+	::snprintf(text, sizeof(text), "MMDVM.status.val=%u", status);
 
 	sendCommand(text);
 	sendCommand("click S0,1");
@@ -1250,7 +1283,7 @@ void CNextion::sendClock()
 		timeText[0] = '\0';
 
 	char text[120U];
-	::snprintf(text, 120, "t2.txt=\"%s %s\"", dateText, timeText);
+	::snprintf(text, sizeof(text), "t2.txt=\"%s %s\"", dateText, timeText);
 	sendCommand(text);
 }
 
@@ -1476,7 +1509,7 @@ void CNextion::sendLastHeard(unsigned int page, unsigned int count)
 			break;
 
 		char prefix[10U];
-		::sprintf(prefix, "LH%u", n);
+		::snprintf(prefix, sizeof(prefix), "LH%u", n);
 		for (const auto& it : call) {
 			// Empty fields are left out
 			if (it.second.compare(it.second.size() - 2U, 2U, "\"\"") != 0)
@@ -1575,10 +1608,10 @@ void CNextion::sendModes(bool direct)
 	for (const auto& it : fields) {
 		char text[30U];
 
-		::sprintf(text, "%s.bco=%u", it.field, it.on ? BCO_ENABLED : BCO_DISABLED);
+		::snprintf(text, sizeof(text), "%s.bco=%u", it.field, it.on ? BCO_ENABLED : BCO_DISABLED);
 		if (direct) queueCommand(text); else sendCommand(text);
 
-		::sprintf(text, "%s.pco=%u", it.field, it.on ? PCO_ENABLED : PCO_DISABLED);
+		::snprintf(text, sizeof(text), "%s.pco=%u", it.field, it.on ? PCO_ENABLED : PCO_DISABLED);
 		if (direct) queueCommand(text); else sendCommand(text);
 	}
 
@@ -1634,7 +1667,7 @@ void CNextion::readGroups()
 	auto add = [&groups](unsigned long id, const std::string& raw) {
 		std::string name;
 		for (char c : raw) {
-			if ((c != '"') && (c != '\\') && (c != '\r') && (c != '\n'))
+			if (fieldChar(c))
 				name += c;
 		}
 		name.erase(0U, name.find_first_not_of(" \t,;:"));
@@ -1704,9 +1737,9 @@ void CNextion::sendDiskFree()
 
 	char text[30U];
 	if (percent < 0)
-		::sprintf(text, "t23.txt=\"??\"");
+		::snprintf(text, sizeof(text), "t23.txt=\"??\"");
 	else
-		::sprintf(text, "t23.txt=\"%d\"", percent);
+		::snprintf(text, sizeof(text), "t23.txt=\"%d\"", percent);
 	sendCommand(text);
 }
 
@@ -1772,7 +1805,7 @@ std::string CNextion::clean(const std::string& text)
 {
 	std::string out;
 	for (char c : text) {
-		if ((c != '"') && (c != '\\') && ((unsigned char)c >= 0x20U))
+		if (fieldChar(c))
 			out += c;
 	}
 
@@ -1796,7 +1829,7 @@ void CNextion::sendRTC()
 	const int values[] = {t->tm_year + 1900, t->tm_mon + 1, t->tm_mday, t->tm_hour, t->tm_min, t->tm_sec};
 	for (unsigned int i = 0U; i < 6U; i++) {
 		char text[20U];
-		::sprintf(text, "rtc%u=%d", i, values[i]);
+		::snprintf(text, sizeof(text), "rtc%u=%d", i, values[i]);
 		sendCommand(text);
 	}
 }

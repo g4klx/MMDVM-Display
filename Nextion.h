@@ -116,8 +116,8 @@ private:
 	float          m_temperature;
 	float          m_frequency;
 	float          m_load;
-	float          m_rxFrequency;
-	float          m_txFrequency;
+	double         m_rxFrequency;
+	double         m_txFrequency;
 	std::string    m_location;
 	ISerialPort*   m_serial;
 	unsigned int   m_brightness;
@@ -134,6 +134,7 @@ private:
 	CMutex         m_mutex;
 	unsigned char* m_reply;
 	unsigned int   m_replyLength;
+	unsigned int   m_replyFFs;
 	bool           m_waiting;
 	unsigned int   m_pending;
 	bool           m_redrawIdle;

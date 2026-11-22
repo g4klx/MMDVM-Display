@@ -535,7 +535,7 @@ void COLED::writePOCSAGInt(uint32_t ric, const std::string& message)
 	}
 
 	// remove double-quotation leading/trailing message
-	if (length && message.at(pos) == '\"' && message.at(length - 1) == '\"') {
+	if ((pos < length) && (length - pos >= 2) && message.at(pos) == '\"' && message.at(length - 1) == '\"') {
 		pos++;
 		length--;
 	}
