@@ -122,6 +122,7 @@ bool CTFTSurenoo::open()
 	if (!ret) {
 		LogError("Cannot open the port for the TFT Serial");
 		delete m_serial;
+		m_serial = nullptr;
 		return false;
 	}
 
@@ -130,6 +131,7 @@ bool CTFTSurenoo::open()
 		LogError("Cannot allocate line buffer");
 		m_serial->close();
 		delete m_serial;
+		m_serial = nullptr;
 		return false;
 	}
 
@@ -350,9 +352,13 @@ void CTFTSurenoo::clearFMInt()
 void CTFTSurenoo::close()
 {
 	delete[] m_lineBuf;
+	m_lineBuf = nullptr;
 
-	m_serial->close();
-	delete m_serial;
+	if (m_serial != nullptr) {
+		m_serial->close();
+		delete m_serial;
+		m_serial = nullptr;
+	}
 }
 
 void CTFTSurenoo::writeGeneralInt(const std::string& callsign, unsigned int id, bool duplex)
@@ -399,6 +405,10 @@ void CTFTSurenoo::setModeLine(const char *text)
 
 void CTFTSurenoo::setStatusLine(unsigned int line, const char *text)
 {
+	// m_lineBuf holds STATUS_LINES lines after the first
+	if (line >= (unsigned int)STATUS_LINES)
+		return;
+
 	setLineBuffer(m_lineBuf + statusLineOffset(line), text, STATUS_CHARS);
 }  
 

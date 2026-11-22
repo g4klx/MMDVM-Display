@@ -606,7 +606,7 @@ void CMMDVMDisplay::readHost(const std::string& text)
 			return;
 		}
 	}
-	catch (nlohmann::json::exception& ex) {
+	catch (std::exception& ex) {
 		LogError("Error parsing: \"%s\" - %s", text.c_str(), ex.what());
 	}
 }
@@ -649,7 +649,7 @@ void CMMDVMDisplay::readInfo(const std::string& text)
 			return;
 		}
 	}
-	catch (nlohmann::json::exception& ex) {
+	catch (std::exception& ex) {
 		LogError("Error parsing: \"%s\" - %s", text.c_str(), ex.what());
 	}
 }
@@ -675,7 +675,7 @@ void CMMDVMDisplay::parseMMDVM(const nlohmann::json& json)
 				m_display->setError();
 		}
 	}
-	catch (nlohmann::json::exception& ex) {
+	catch (std::exception& ex) {
 		LogError("Error parsing MMDVM - %s", ex.what());
 	}
 }
@@ -708,7 +708,7 @@ void CMMDVMDisplay::parseRSSI(const nlohmann::json& json)
 			m_display->writeFMRSSI(value);
 		}
 	}
-	catch (nlohmann::json::exception& ex) {
+	catch (std::exception& ex) {
 		LogError("Error parsing RSSI - %s", ex.what());
 	}
 }
@@ -739,7 +739,7 @@ void CMMDVMDisplay::parseBER(const nlohmann::json& json)
 			m_display->writeNXDNBER(value);
 		}
 	}
-	catch (nlohmann::json::exception& ex) {
+	catch (std::exception& ex) {
 		LogError("Error parsing BER - %s", ex.what());
 	}
 }
@@ -764,7 +764,7 @@ void CMMDVMDisplay::parseText(const nlohmann::json& json)
 			m_display->writeDMRTA(slot, value);
 		}
 	}
-	catch (nlohmann::json::exception& ex) {
+	catch (std::exception& ex) {
 		LogError("Error parsing Text - %s", ex.what());
 	}
 }
@@ -794,7 +794,7 @@ void CMMDVMDisplay::parseDStar(const nlohmann::json& json)
 			m_display->clearDStar();
 		}
 	}
-	catch (nlohmann::json::exception& ex) {
+	catch (std::exception& ex) {
 		LogError("Error parsing D-Star - %s", ex.what());
 	}
 }
@@ -835,7 +835,7 @@ void CMMDVMDisplay::parseDMR(const nlohmann::json& json)
 			m_display->clearDMR(slot);
 		}
 	}
-	catch (nlohmann::json::exception& ex) {
+	catch (std::exception& ex) {
 		LogError("Error parsing DMR - %s", ex.what());
 	}
 }
@@ -864,7 +864,7 @@ void CMMDVMDisplay::parseYSF(const nlohmann::json& json)
 			m_display->clearFusion();
 		}
 	}
-	catch (nlohmann::json::exception& ex) {
+	catch (std::exception& ex) {
 		LogError("Error parsing YSF - %s", ex.what());
 	}
 }
@@ -893,7 +893,7 @@ void CMMDVMDisplay::parseP25(const nlohmann::json& json)
 			m_display->clearP25();
 		}
 	}
-	catch (nlohmann::json::exception& ex) {
+	catch (std::exception& ex) {
 		LogError("Error parsing P25 - %s", ex.what());
 	}
 }
@@ -926,7 +926,7 @@ void CMMDVMDisplay::parseNXDN(const nlohmann::json& json)
 			m_display->clearNXDN();
 		}
 	}
-	catch (nlohmann::json::exception& ex) {
+	catch (std::exception& ex) {
 		LogError("Error parsing NXDN - %s", ex.what());
 	}
 }
@@ -950,7 +950,7 @@ void CMMDVMDisplay::parsePOCSAG(const nlohmann::json& json)
 			m_display->writePOCSAG(ric, message);
 		}
 	}
-	catch (nlohmann::json::exception& ex) {
+	catch (std::exception& ex) {
 		LogError("Error parsing POCSAG - %s", ex.what());
 	}
 }
@@ -986,7 +986,7 @@ void CMMDVMDisplay::parseFM(const nlohmann::json& json)
 		else
 			m_display->writeFM(state);
 	}
-	catch (nlohmann::json::exception& ex) {
+	catch (std::exception& ex) {
 		LogError("Error parsing FM - %s", ex.what());
 	}
 }
@@ -1011,7 +1011,7 @@ void CMMDVMDisplay::parseCPU(const nlohmann::json& json)
 
 		m_display->writeCPU(temperature, frequency, load);
 	}
-	catch (nlohmann::json::exception& ex) {
+	catch (std::exception& ex) {
 		LogError("Error parsing CPU - %s", ex.what());
 	}
 }
@@ -1030,7 +1030,7 @@ void CMMDVMDisplay::parsePrograms(const nlohmann::json& json)
 			}
 		}
 	}
-	catch (nlohmann::json::exception& ex) {
+	catch (std::exception& ex) {
 		LogError("Error parsing Programs - %s", ex.what());
 		return;
 	}
@@ -1046,21 +1046,14 @@ void CMMDVMDisplay::parseAddresses(const nlohmann::json& json)
 		// We only take the first external interface
 		for (const auto& it : json.items()) {
 			const nlohmann::json obj = it.value();
+			if (!obj.is_object())
+				continue;
 
-			std::string ipV4;
-			std::string ipV6;
-
-			std::string name = obj["name"];
-
-			if (obj.contains("ipv4")) {
-				std::string ip = obj["ipv4"];
-				ipV4 = ip;
-			}
-
-			if (obj.contains("ipv6")) {
-				std::string ip = obj["ipv6"];
-				ipV6 = ip;
-			}
+			// value(), not [] on a const object: a missing key would be
+			// undefined behaviour
+			std::string name = obj.value("name", std::string());
+			std::string ipV4 = obj.value("ipv4", std::string());
+			std::string ipV6 = obj.value("ipv6", std::string());
 
 			m_display->writeIP(name, ipV4, ipV6);
 
@@ -1076,7 +1069,7 @@ void CMMDVMDisplay::parseAddresses(const nlohmann::json& json)
 			return;
 		}
 	}
-	catch (nlohmann::json::exception& ex) {
+	catch (std::exception& ex) {
 		LogError("Error parsing Addresses - %s", ex.what());
 	}
 }
@@ -1254,36 +1247,40 @@ void CMMDVMDisplay::pollHostAddresses()
 
 void CMMDVMDisplay::onDisplay(const unsigned char* data, unsigned int length)
 {
-	assert(data != nullptr);
-	assert(length > 0U);
-	assert(driver != nullptr);
+	// An empty message (mosquitto passes no data for one) or one before
+	// the driver exists is ignored: it is not ours to abort on
+	if ((data == nullptr) || (length == 0U) || (driver == nullptr))
+		return;
 
 	driver->readDisplay(data, length);
 }
 
 void CMMDVMDisplay::onHost(const unsigned char* data, unsigned int length)
 {
-	assert(data != nullptr);
-	assert(length > 0U);
-	assert(driver != nullptr);
+	// An empty message (mosquitto passes no data for one) or one before
+	// the driver exists is ignored: it is not ours to abort on
+	if ((data == nullptr) || (length == 0U) || (driver == nullptr))
+		return;
 
 	driver->readHost(std::string((char*)data, length));
 }
 
 void CMMDVMDisplay::onInfo(const unsigned char* data, unsigned int length)
 {
-	assert(data != nullptr);
-	assert(length > 0U);
-	assert(driver != nullptr);
+	// An empty message (mosquitto passes no data for one) or one before
+	// the driver exists is ignored: it is not ours to abort on
+	if ((data == nullptr) || (length == 0U) || (driver == nullptr))
+		return;
 
 	driver->readInfo(std::string((char*)data, length));
 }
 
 void CMMDVMDisplay::onNextion(const unsigned char* data, unsigned int length)
 {
-	assert(data != nullptr);
-	assert(length > 0U);
-	assert(driver != nullptr);
+	// An empty message (mosquitto passes no data for one) or one before
+	// the driver exists is ignored: it is not ours to abort on
+	if ((data == nullptr) || (length == 0U) || (driver == nullptr))
+		return;
 
 	driver->readNextion(data, length);
 }

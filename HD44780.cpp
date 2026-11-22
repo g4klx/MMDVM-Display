@@ -415,7 +415,7 @@ void CHD44780::writeDStarInt(const std::string& my1, const std::string& my2, con
 
 	if (m_rows > 2U) {
 		::lcdPosition(m_fd, 0, (m_rows / 2) - 2);
-		::sprintf(m_buffer1, "%s%s", "D-Star", DEADSPACE.c_str());
+		::snprintf(m_buffer1, sizeof(m_buffer1), "%s%s", "D-Star", DEADSPACE.c_str());
 		::lcdPrintf(m_fd, "%.*s", m_cols, m_buffer1);
 	}
 
@@ -429,7 +429,7 @@ void CHD44780::writeDStarInt(const std::string& my1, const std::string& my2, con
 	else
 		::lcdPutchar(m_fd, 3);
 
-	::sprintf(m_buffer1, "%.8s", your.c_str());
+	::snprintf(m_buffer1, sizeof(m_buffer1), "%.8s", your.c_str());
 	
 	char *p = m_buffer1;
 	for (; *p; ++p) {
@@ -439,10 +439,10 @@ void CHD44780::writeDStarInt(const std::string& my1, const std::string& my2, con
 
 	if (reflector != "        ") {
 		if (m_rows == 2 && m_cols == 40) {
-			::sprintf(m_buffer3, " via %.8s", reflector.c_str());
+			::snprintf(m_buffer3, sizeof(m_buffer3), " via %.8s", reflector.c_str());
 			::strcat(m_buffer1, m_buffer3);
 		} else if (m_rows > 2) {
-			::sprintf(m_buffer3, "via %.8s", reflector.c_str());
+			::snprintf(m_buffer3, sizeof(m_buffer3), "via %.8s", reflector.c_str());
 			::lcdPosition(m_fd, 0, (m_rows / 2) + 1);
 			::lcdPrintf(m_fd, "%.*s", m_cols, m_buffer3);
 		}
@@ -477,7 +477,7 @@ void CHD44780::clearDStarInt()
 	::lcdClear(m_fd);
 
 	::lcdPosition(m_fd, 0, (m_rows / 2) - 1);
-	::sprintf(m_buffer2, "%s%s", "D-Star", DEADSPACE.c_str());
+	::snprintf(m_buffer2, sizeof(m_buffer2), "%s%s", "D-Star", DEADSPACE.c_str());
 	::lcdPrintf(m_fd, "%.*s", m_cols, m_buffer2);
 	::lcdPosition(m_fd, 0, (m_rows / 2));
 	::lcdPrintf(m_fd, "%.*s", m_cols, LISTENING);
@@ -502,7 +502,7 @@ void CHD44780::writeDMRInt(unsigned int slotNo, const std::string& src, bool gro
 		if (m_duplex) {
 			if (m_rows > 2U) {
 				::lcdPosition(m_fd, 0, (m_rows / 2) - 2);
-				::sprintf(m_buffer1, "%s%s", "DMR", DEADSPACE.c_str());
+				::snprintf(m_buffer1, sizeof(m_buffer1), "%s%s", "DMR", DEADSPACE.c_str());
 				::lcdPrintf(m_fd, "%.*s", m_cols, m_buffer1);
 			}
 
@@ -520,12 +520,12 @@ void CHD44780::writeDMRInt(unsigned int slotNo, const std::string& src, bool gro
 
 			if (m_rows > 2U) {
 				::lcdPosition(m_fd, 0, (m_rows / 2) - 2);
-				::sprintf(m_buffer1, "%s", DEADSPACE.c_str());
+				::snprintf(m_buffer1, sizeof(m_buffer1), "%s", DEADSPACE.c_str());
 				::lcdPrintf(m_fd, "%.*s", m_cols, m_buffer1);
 			}
 
 			::lcdPosition(m_fd, 0, (m_rows / 2) - 1);
-			::sprintf(m_buffer1, "%s%s", "DMR", DEADSPACE.c_str());
+			::snprintf(m_buffer1, sizeof(m_buffer1), "%s%s", "DMR", DEADSPACE.c_str());
 			::lcdPrintf(m_fd, "%.*s", m_cols, m_buffer1);
 			::lcdPosition(m_fd, 0, (m_rows / 2));
 			::lcdPrintf(m_fd, "%.*s", m_cols, LISTENING);
@@ -538,7 +538,7 @@ void CHD44780::writeDMRInt(unsigned int slotNo, const std::string& src, bool gro
 	if (m_duplex) {
 		if (m_rows > 2U) {
 			::lcdPosition(m_fd, 0, (m_rows / 2) - 2);
-			::sprintf(m_buffer1, "%s%s", "DMR", DEADSPACE.c_str());
+			::snprintf(m_buffer1, sizeof(m_buffer1), "%s%s", "DMR", DEADSPACE.c_str());
 			::lcdPrintf(m_fd, "%.*s", m_cols, m_buffer1);
 		}
 
@@ -546,9 +546,9 @@ void CHD44780::writeDMRInt(unsigned int slotNo, const std::string& src, bool gro
 			::lcdPosition(m_fd, 0, (m_rows / 2) - 1);
 			::lcdPuts(m_fd, "1 ");
 			if (m_cols > 16U)
-				::sprintf(m_buffer1, "%s > %s%u%s", src.c_str(), group ? "TG" : "", dst, DEADSPACE.c_str());
+				::snprintf(m_buffer1, sizeof(m_buffer1), "%s > %s%u%s", src.c_str(), group ? "TG" : "", dst, DEADSPACE.c_str());
 			else
-				::sprintf(m_buffer1, "%s>%u%s", src.c_str(), dst, DEADSPACE.c_str());
+				::snprintf(m_buffer1, sizeof(m_buffer1), "%s>%u%s", src.c_str(), dst, DEADSPACE.c_str());
 			::lcdPrintf(m_fd, "%.*s", m_cols - 2U, m_buffer1);
 
 			::lcdPosition(m_fd, m_cols - 3U, (m_rows / 2) - 1);
@@ -568,9 +568,9 @@ void CHD44780::writeDMRInt(unsigned int slotNo, const std::string& src, bool gro
 			::lcdPuts(m_fd, "2 ");
 
 			if (m_cols > 16)
-				::sprintf(m_buffer2, "%s > %s%u%s", src.c_str(), group ? "TG" : "", dst, DEADSPACE.c_str());
+				::snprintf(m_buffer2, sizeof(m_buffer2), "%s > %s%u%s", src.c_str(), group ? "TG" : "", dst, DEADSPACE.c_str());
 			else
-				::sprintf(m_buffer2, "%s>%u%s", src.c_str(), dst, DEADSPACE.c_str());
+				::snprintf(m_buffer2, sizeof(m_buffer2), "%s>%u%s", src.c_str(), dst, DEADSPACE.c_str());
 			::lcdPrintf(m_fd, "%.*s", m_cols - 2U, m_buffer2);
 
 			::lcdPosition(m_fd, m_cols - 3U, (m_rows / 2));
@@ -589,13 +589,13 @@ void CHD44780::writeDMRInt(unsigned int slotNo, const std::string& src, bool gro
 	} else {
 		if (m_rows > 2U) {
 			::lcdPosition(m_fd, 0, (m_rows / 2) - 2);
-			::sprintf(m_buffer1, "%s%s", "DMR", DEADSPACE.c_str());
+			::snprintf(m_buffer1, sizeof(m_buffer1), "%s%s", "DMR", DEADSPACE.c_str());
 			::lcdPrintf(m_fd, "%.*s", m_cols, m_buffer1);
 		}
 
 		::lcdPosition(m_fd, 0, (m_rows / 2) - 1);
 		::lcdPutchar(m_fd, 0);
-		::sprintf(m_buffer2, " %s%s", src.c_str(), DEADSPACE.c_str());
+		::snprintf(m_buffer2, sizeof(m_buffer2), " %s%s", src.c_str(), DEADSPACE.c_str());
 		::lcdPrintf(m_fd, "%.*s", m_cols - 4U, m_buffer2);
 		::lcdPosition(m_fd, m_cols - 1U, (m_rows / 2) - 1);
 
@@ -606,7 +606,7 @@ void CHD44780::writeDMRInt(unsigned int slotNo, const std::string& src, bool gro
 
 		::lcdPosition(m_fd, 0, (m_rows / 2));
 		::lcdPutchar(m_fd, 1);
-		::sprintf(m_buffer2, " %s%u%s", group ? "TG" : "", dst, DEADSPACE.c_str());
+		::snprintf(m_buffer2, sizeof(m_buffer2), " %s%u%s", group ? "TG" : "", dst, DEADSPACE.c_str());
 		::lcdPrintf(m_fd, "%.*s", m_cols - 4U, m_buffer2);
 		::lcdPosition(m_fd, m_cols - 1U, (m_rows / 2));
 
@@ -674,12 +674,12 @@ void CHD44780::clearDMRInt(unsigned int slotNo)
 	} else {
 		if (m_rows > 2U) {
 			::lcdPosition(m_fd, 0, (m_rows / 2) - 2);
-			::sprintf(m_buffer1, "%s", DEADSPACE.c_str());
+			::snprintf(m_buffer1, sizeof(m_buffer1), "%s", DEADSPACE.c_str());
 			::lcdPrintf(m_fd, "%.*s", m_cols, m_buffer1);
 		}
 
 		::lcdPosition(m_fd, 0, (m_rows / 2) - 1);
-		::sprintf(m_buffer2, "%s%s", "DMR", DEADSPACE.c_str());
+		::snprintf(m_buffer2, sizeof(m_buffer2), "%s%s", "DMR", DEADSPACE.c_str());
 		::lcdPrintf(m_fd, "%.*s", m_cols, m_buffer2);
 		::lcdPosition(m_fd, 0, (m_rows / 2));
 		::lcdPrintf(m_fd, "%.*s", m_cols, LISTENING);
@@ -705,27 +705,27 @@ void CHD44780::writeFusionInt(const std::string& source, const std::string& dest
 	::lcdPuts(m_fd, "System Fusion");
 
 	if (m_rows == 2U && m_cols == 16U) {
-		::sprintf(m_buffer1, "%.10s >", source.c_str());
+		::snprintf(m_buffer1, sizeof(m_buffer1), "%.10s >", source.c_str());
 		::lcdPosition(m_fd, 0, 1);
 		::lcdPrintf(m_fd, "%.*s", m_cols, m_buffer1);
 	} else if (m_rows == 4U && m_cols == 16U) {
-		::sprintf(m_buffer1, "%.10s >", source.c_str());
+		::snprintf(m_buffer1, sizeof(m_buffer1), "%.10s >", source.c_str());
 		::lcdPosition(m_fd, 0, 1);
 		::lcdPrintf(m_fd, "%.*s", m_cols, m_buffer1);
 
-		::sprintf(m_buffer1, "DG-ID %u", dgid);
+		::snprintf(m_buffer1, sizeof(m_buffer1), "DG-ID %u", dgid);
 		::lcdPosition(m_fd, 0, 2);
 		::lcdPrintf(m_fd, "%.*s", m_cols, m_buffer1);
 	} else if (m_rows == 4U && m_cols == 20U) {
-		::sprintf(m_buffer1, "%.10s >", source.c_str());
+		::snprintf(m_buffer1, sizeof(m_buffer1), "%.10s >", source.c_str());
 		::lcdPosition(m_fd, 0, 1);
 		::lcdPrintf(m_fd, "%.*s", m_cols, m_buffer1);
 
-		::sprintf(m_buffer1, "DG-ID %u", dgid);
+		::snprintf(m_buffer1, sizeof(m_buffer1), "DG-ID %u", dgid);
 		::lcdPosition(m_fd, 0, 2);
 		::lcdPrintf(m_fd, "%.*s", m_cols, m_buffer1);
 	} else if (m_rows == 2 && m_cols == 40U) {
-		::sprintf(m_buffer1, "%.10s > DG-ID %u", source.c_str(), dgid);
+		::snprintf(m_buffer1, sizeof(m_buffer1), "%.10s > DG-ID %u", source.c_str(), dgid);
 
 		::lcdPosition(m_fd, 0, 1);
 		::lcdPrintf(m_fd, "%.*s", m_cols, m_buffer1);
@@ -800,27 +800,27 @@ void CHD44780::writeP25Int(const std::string& source, bool group, unsigned int d
 	::lcdPuts(m_fd, "P25");
 
 	if (m_rows == 2U && m_cols == 16U) {
-		::sprintf(m_buffer1, "%.10s >", source.c_str());
+		::snprintf(m_buffer1, sizeof(m_buffer1), "%.10s >", source.c_str());
 		::lcdPosition(m_fd, 0, 1);
 		::lcdPrintf(m_fd, "%.*s", m_cols, m_buffer1);
 	} else if (m_rows == 4U && m_cols == 16U) {
-		::sprintf(m_buffer1, "%.10s >", source.c_str());
+		::snprintf(m_buffer1, sizeof(m_buffer1), "%.10s >", source.c_str());
 		::lcdPosition(m_fd, 0, 1);
 		::lcdPrintf(m_fd, "%.*s", m_cols, m_buffer1);
 
-		::sprintf(m_buffer1, "%s%u", group ? "TG" : "", dest);
+		::snprintf(m_buffer1, sizeof(m_buffer1), "%s%u", group ? "TG" : "", dest);
 		::lcdPosition(m_fd, 0, 2);
 		::lcdPrintf(m_fd, "%.*s", m_cols, m_buffer1);
 	} else if (m_rows == 4U && m_cols == 20U) {
-		::sprintf(m_buffer1, "%.10s >", source.c_str());
+		::snprintf(m_buffer1, sizeof(m_buffer1), "%.10s >", source.c_str());
 		::lcdPosition(m_fd, 0, 1);
 		::lcdPrintf(m_fd, "%.*s", m_cols, m_buffer1);
 
-		::sprintf(m_buffer1, "%s%u", group ? "TG" : "", dest);
+		::snprintf(m_buffer1, sizeof(m_buffer1), "%s%u", group ? "TG" : "", dest);
 		::lcdPosition(m_fd, 0, 2);
 		::lcdPrintf(m_fd, "%.*s", m_cols, m_buffer1);
 	} else if (m_rows == 2 && m_cols == 40U) {
-		::sprintf(m_buffer1, "%.10s > %s%u", source.c_str(), group ? "TG" : "", dest);
+		::snprintf(m_buffer1, sizeof(m_buffer1), "%.10s > %s%u", source.c_str(), group ? "TG" : "", dest);
 
 		::lcdPosition(m_fd, 0, 1);
 		::lcdPrintf(m_fd, "%.*s", m_cols, m_buffer1);
@@ -896,27 +896,27 @@ void CHD44780::writeNXDNInt(const std::string& source, bool group, unsigned int 
 	::lcdPuts(m_fd, "NXDN");
 
 	if (m_rows == 2U && m_cols == 16U) {
-		::sprintf(m_buffer1, "%.10s >", source.c_str());
+		::snprintf(m_buffer1, sizeof(m_buffer1), "%.10s >", source.c_str());
 		::lcdPosition(m_fd, 0, 1);
 		::lcdPrintf(m_fd, "%.*s", m_cols, m_buffer1);
 	} else if (m_rows == 4U && m_cols == 16U) {
-		::sprintf(m_buffer1, "%.10s >", source.c_str());
+		::snprintf(m_buffer1, sizeof(m_buffer1), "%.10s >", source.c_str());
 		::lcdPosition(m_fd, 0, 1);
 		::lcdPrintf(m_fd, "%.*s", m_cols, m_buffer1);
 
-		::sprintf(m_buffer1, "%s%u", group ? "TG" : "", dest);
+		::snprintf(m_buffer1, sizeof(m_buffer1), "%s%u", group ? "TG" : "", dest);
 		::lcdPosition(m_fd, 0, 2);
 		::lcdPrintf(m_fd, "%.*s", m_cols, m_buffer1);
 	} else if (m_rows == 4U && m_cols == 20U) {
-		::sprintf(m_buffer1, "%.10s >", source.c_str());
+		::snprintf(m_buffer1, sizeof(m_buffer1), "%.10s >", source.c_str());
 		::lcdPosition(m_fd, 0, 1);
 		::lcdPrintf(m_fd, "%.*s", m_cols, m_buffer1);
 
-		::sprintf(m_buffer1, "%s%u", group ? "TG" : "", dest);
+		::snprintf(m_buffer1, sizeof(m_buffer1), "%s%u", group ? "TG" : "", dest);
 		::lcdPosition(m_fd, 0, 2);
 		::lcdPrintf(m_fd, "%.*s", m_cols, m_buffer1);
 	} else if (m_rows == 2 && m_cols == 40U) {
-		::sprintf(m_buffer1, "%.10s > %s%u", source.c_str(), group ? "TG" : "", dest);
+		::snprintf(m_buffer1, sizeof(m_buffer1), "%.10s > %s%u", source.c_str(), group ? "TG" : "", dest);
 		::lcdPosition(m_fd, 0, 1);
 		::lcdPrintf(m_fd, "%.*s", m_cols, m_buffer1);
 	}

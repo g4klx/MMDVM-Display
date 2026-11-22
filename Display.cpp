@@ -24,6 +24,44 @@
 #include <cassert>
 #include <cstring>
 
+// The longest each piece of text from MMDVM-Host or MMDVM-Info is taken
+// to be: longer is cut here, so no display driver is handed more than it
+// was written for. Generous for real traffic (a D-Star text is 20
+// characters, a DMR talker alias at most 31, a DAPNET message 80).
+static const std::string::size_type MAX_CALLSIGN = 16U;  // callsigns, suffixes, types
+static const std::string::size_type MAX_SOURCE   = 40U;  // a caller with its name
+static const std::string::size_type MAX_DSTAR    = 20U;  // D-Star slow data text
+static const std::string::size_type MAX_ALIAS    = 40U;  // DMR talker alias
+static const std::string::size_type MAX_POCSAG   = 160U; // a paging message
+static const std::string::size_type MAX_STATUS   = 32U;  // FM status
+static const std::string::size_type MAX_LOCATION = 50U;
+static const std::string::size_type MAX_IFNAME   = 16U;
+static const std::string::size_type MAX_ADDRESS  = 46U;  // an IPv6 address
+
+// Text as every display takes it: no control characters (a newline would
+// end an LCDproc command early, and no display shows one), never 0xFF
+// (three end a Nextion command; valid UTF-8 never holds one), and no
+// longer than length.
+static std::string limit(const std::string& text, std::string::size_type length)
+{
+	std::string out;
+	for (char c : text) {
+		unsigned char u = (unsigned char)c;
+		if ((u >= 0x20U) && (u != 0x7FU) && (u != 0xFFU))
+			out += c;
+		if (out.size() >= length)
+			break;
+	}
+	return out;
+}
+
+// DMR has two slots: anything else is ignored, as the drivers index
+// their per-slot state by it
+static bool validSlot(unsigned int slotNo)
+{
+	return (slotNo == 1U) || (slotNo == 2U);
+}
+
 CDisplay::CDisplay() :
 m_timer1(3000U, 3U),
 m_timer2(3000U, 3U),
@@ -85,7 +123,7 @@ void CDisplay::writeDStar(const std::string& my1, const std::string& my2, const 
 	m_timer1.start();
 	m_mode1 = MODE_IDLE;
 
-	writeDStarInt(my1, my2, your, type, reflector);
+	writeDStarInt(limit(my1, MAX_CALLSIGN), limit(my2, MAX_CALLSIGN), limit(your, MAX_CALLSIGN), limit(type, MAX_CALLSIGN), limit(reflector, MAX_CALLSIGN));
 }
 
 void CDisplay::writeDStarRSSI(int rssi)
@@ -101,7 +139,7 @@ void CDisplay::writeDStarBER(float ber)
 
 void CDisplay::writeDStarText(const std::string& text)
 {
-	writeDStarTextInt(text);
+	writeDStarTextInt(limit(text, MAX_DSTAR));
 }
 
 void CDisplay::clearDStar()
@@ -117,6 +155,9 @@ void CDisplay::clearDStar()
 
 void CDisplay::writeDMR(unsigned int slotNo, const std::string& src, bool group, unsigned int dst, const std::string& type)
 {
+	if (!validSlot(slotNo))
+		return;
+
 	if (slotNo == 1U) {
 		m_timer1.start();
 		m_mode1 = MODE_IDLE;
@@ -125,27 +166,32 @@ void CDisplay::writeDMR(unsigned int slotNo, const std::string& src, bool group,
 		m_mode2 = MODE_IDLE;
 	}
 
-	writeDMRInt(slotNo, src, group, dst, type);
+	writeDMRInt(slotNo, limit(src, MAX_SOURCE), group, dst, limit(type, MAX_CALLSIGN));
 }
 
 void CDisplay::writeDMRRSSI(unsigned int slotNo, int rssi)
 {
-	if (rssi != 0)
+	if (validSlot(slotNo) && (rssi != 0))
 		writeDMRRSSIInt(slotNo, rssi);
 }
 
 void CDisplay::writeDMRTA(unsigned int slotNo, const std::string& talkerAlias)
 {
-	writeDMRTAInt(slotNo, talkerAlias);
+	if (validSlot(slotNo))
+		writeDMRTAInt(slotNo, limit(talkerAlias, MAX_ALIAS));
 }
 
 void CDisplay::writeDMRBER(unsigned int slotNo, float ber)
 {
-	writeDMRBERInt(slotNo, ber);
+	if (validSlot(slotNo))
+		writeDMRBERInt(slotNo, ber);
 }
 
 void CDisplay::clearDMR(unsigned int slotNo)
 {
+	if (!validSlot(slotNo))
+		return;
+
 	if (slotNo == 1U) {
 		if (m_timer1.hasExpired()) {
 			clearDMRInt(slotNo);
@@ -170,7 +216,7 @@ void CDisplay::writeFusion(const std::string& source, const std::string& dest, u
 	m_timer1.start();
 	m_mode1 = MODE_IDLE;
 
-	writeFusionInt(source, dest, dgid, type, origin);
+	writeFusionInt(limit(source, MAX_CALLSIGN), limit(dest, MAX_CALLSIGN), dgid, limit(type, MAX_CALLSIGN), limit(origin, MAX_CALLSIGN));
 }
 
 void CDisplay::writeFusionRSSI(int rssi)
@@ -200,7 +246,7 @@ void CDisplay::writeP25(const std::string& source, bool group, unsigned int dest
 	m_timer1.start();
 	m_mode1 = MODE_IDLE;
 
-	writeP25Int(source, group, dest, type);
+	writeP25Int(limit(source, MAX_SOURCE), group, dest, limit(type, MAX_CALLSIGN));
 }
 
 void CDisplay::writeP25RSSI(int rssi)
@@ -230,7 +276,7 @@ void CDisplay::writeNXDN(const std::string& source, bool group, unsigned int des
 	m_timer1.start();
 	m_mode1 = MODE_IDLE;
 
-	writeNXDNInt(source, group, dest, type);
+	writeNXDNInt(limit(source, MAX_SOURCE), group, dest, limit(type, MAX_CALLSIGN));
 }
 
 void CDisplay::writeNXDNRSSI(int rssi)
@@ -260,7 +306,7 @@ void CDisplay::writePOCSAG(uint32_t ric, const std::string& message)
 	m_timer1.start();
 	m_mode1 = MODE_POCSAG;
 
-	writePOCSAGInt(ric, message);
+	writePOCSAGInt(ric, limit(message, MAX_POCSAG));
 }
 
 void CDisplay::clearPOCSAG()
@@ -279,7 +325,7 @@ void CDisplay::writeFM(const std::string& status)
 	m_timer1.start();
 	m_mode1 = MODE_FM;
 
-	writeFMInt(status);
+	writeFMInt(limit(status, MAX_STATUS));
 }
 
 void CDisplay::writeFMRSSI(int rssi)
@@ -309,7 +355,7 @@ void CDisplay::writeCW()
 
 void CDisplay::writeGeneral(const std::string& callsign, unsigned int id, bool duplex)
 {
-	writeGeneralInt(callsign, id, duplex);
+	writeGeneralInt(limit(callsign, MAX_CALLSIGN), id, duplex);
 }
 
 void CDisplay::writeCPU(float temperature, float frequency, float load)
@@ -319,12 +365,12 @@ void CDisplay::writeCPU(float temperature, float frequency, float load)
 
 void CDisplay::writeInfo(unsigned int rxFrequency, unsigned int txFrequency, const std::string& location)
 {
-	writeInfoInt(rxFrequency, txFrequency, location);
+	writeInfoInt(rxFrequency, txFrequency, limit(location, MAX_LOCATION));
 }
 
 void CDisplay::writeIP(const std::string& name, const std::string& ipV4, const std::string& ipV6)
 {
-	writeIPInt(name, ipV4, ipV6);
+	writeIPInt(limit(name, MAX_IFNAME), limit(ipV4, MAX_ADDRESS), limit(ipV6, MAX_ADDRESS));
 }
 
 void CDisplay::writeModes(const CHostModes& modes)
@@ -339,7 +385,8 @@ void CDisplay::writePrograms(const std::vector<std::string>& running)
 
 void CDisplay::writeDMRCaller(unsigned int slotNo, unsigned int id)
 {
-	writeDMRCallerInt(slotNo, id);
+	if (validSlot(slotNo))
+		writeDMRCallerInt(slotNo, id);
 }
 
 void CDisplay::writeNXDNCaller(unsigned int id)

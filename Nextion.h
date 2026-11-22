@@ -134,6 +134,7 @@ private:
 	CMutex         m_mutex;
 	unsigned char* m_reply;
 	unsigned int   m_replyLength;
+	unsigned int   m_replyFFs;
 	bool           m_waiting;
 	unsigned int   m_pending;
 	bool           m_redrawIdle;

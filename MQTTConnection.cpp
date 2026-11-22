@@ -59,9 +59,9 @@ bool CMQTTConnection::open()
 {
 	char name[50U];
 #if defined(_WIN32) || defined(_WIN64)
-	::sprintf(name, "Display.%u", (unsigned)::_getpid());
+	::snprintf(name, sizeof(name), "Display.%u", (unsigned)::_getpid());
 #else
-	::sprintf(name, "Display.%u", (unsigned)::getpid());
+	::snprintf(name, sizeof(name), "Display.%u", (unsigned)::getpid());
 #endif
 
 	::fprintf(stdout, "MMDVM-Display (%s) connecting to MQTT as %s\n", m_name.c_str(), name);
@@ -121,7 +121,7 @@ bool CMQTTConnection::publish(const char* topic, const unsigned char* data, unsi
 
 	if (::strchr(topic, '/') == nullptr) {
 		char topicEx[100U];
-		::sprintf(topicEx, "%s/%s", m_name.c_str(), topic);
+		::snprintf(topicEx, sizeof(topicEx), "%s/%s", m_name.c_str(), topic);
 
 		int rc = ::mosquitto_publish(m_mosq, nullptr, topicEx, len, data, static_cast<int>(m_qos), false);
 		if (rc != MOSQ_ERR_SUCCESS) {
@@ -186,7 +186,7 @@ void CMQTTConnection::onConnect(mosquitto* mosq, void* obj, int rc)
 
 		if (topic.find_first_of('/') == std::string::npos) {
 			char topicEx[100U];
-			::sprintf(topicEx, "%s/%s", p->m_name.c_str(), topic.c_str());
+			::snprintf(topicEx, sizeof(topicEx), "%s/%s", p->m_name.c_str(), topic.c_str());
 
 			rc = ::mosquitto_subscribe(mosq, nullptr, topicEx, static_cast<int>(p->m_qos));
 			if (rc != MOSQ_ERR_SUCCESS) {
