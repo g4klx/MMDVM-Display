@@ -81,8 +81,8 @@ m_ipAddress(),
 m_temperature(-1.0F),
 m_frequency(-1.0F),
 m_load(-1.0F),
-m_rxFrequency(-1.0F),
-m_txFrequency(-1.0F),
+m_rxFrequency(-1.0),
+m_txFrequency(-1.0),
 m_location("?"),
 m_serial(serial),
 m_brightness(brightness),
@@ -236,16 +236,25 @@ void CNextion::setIdleInt()
 
 	sendCPU();
 
-	if (m_rxFrequency != -1.0F) {
-		::sprintf(command, "t30.txt=\"%.4f MHz\"", m_rxFrequency);
+	// Layout 3 takes the frequency as MMDVMHost and NextionDriver sent it:
+	// MHz to six places, with no unit ("438.600000"), as its screens show
+	// "MHz" themselves; the other layouts show "438.6000 MHz"
+	if (m_rxFrequency != -1.0) {
+		if (m_screenLayout & LAYOUT_DIY)
+			::sprintf(command, "t30.txt=\"%3.6f\"", m_rxFrequency);
+		else
+			::sprintf(command, "t30.txt=\"%.4f MHz\"", m_rxFrequency);
 		sendCommand(command);
 	} else {
 		sendCommand("t30.txt=\"?\"");
 	}
 	sendCommandAction(20U);
 
-	if (m_txFrequency != -1.0F) {
-		::sprintf(command, "t32.txt=\"%.4f MHz\"", m_txFrequency);
+	if (m_txFrequency != -1.0) {
+		if (m_screenLayout & LAYOUT_DIY)
+			::sprintf(command, "t32.txt=\"%3.6f\"", m_txFrequency);
+		else
+			::sprintf(command, "t32.txt=\"%.4f MHz\"", m_txFrequency);
 		sendCommand(command);
 	} else {
 		sendCommand("t32.txt=\"?\"");
@@ -927,8 +936,9 @@ void CNextion::sendCPU()
 void CNextion::writeInfoInt(unsigned int rxFrequency, unsigned int txFrequency, const std::string& location)
 {
 	// An unknown frequency (0) is shown as "?"
-	float rx = (rxFrequency != 0U) ? float(rxFrequency) / 1000000.0F : -1.0F;
-	float tx = (txFrequency != 0U) ? float(txFrequency) / 1000000.0F : -1.0F;
+	// double: a float holds 7 digits, and layout 3 shows 9 (438.600000)
+	double rx = (rxFrequency != 0U) ? double(rxFrequency) / 1000000.0 : -1.0;
+	double tx = (txFrequency != 0U) ? double(txFrequency) / 1000000.0 : -1.0;
 
 	if ((rx != m_rxFrequency) || (tx != m_txFrequency) || (location != m_location)) {
 		m_rxFrequency = rx;
