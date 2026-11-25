@@ -185,7 +185,7 @@ private:
 	void sendDiskFree();
 	static std::string clean(const std::string& text);
 	void sendRTC();
-	void sendDMRCaller();
+	void sendDMRCaller(unsigned int slotNo);
 	void sendNXDNCaller();
 	void wake();
 	void idleTouched();
