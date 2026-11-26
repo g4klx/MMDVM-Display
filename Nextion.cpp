@@ -481,7 +481,7 @@ void CNextion::writeDMRInt(unsigned int slotNo, const std::string& src, bool gro
 		// Layout 3: the caller's details with them, and the slot's talker
 		// alias (t8) cleared until one comes
 		if (m_screenLayout & LAYOUT_DIY) {
-			sendDMRCaller();
+			sendDMRCaller(slotNo);
 			sendCommand("t8.txt=\"\"");
 		}
 
@@ -505,7 +505,7 @@ void CNextion::writeDMRInt(unsigned int slotNo, const std::string& src, bool gro
 		sendCommand(text);
 
 		if (m_screenLayout & LAYOUT_DIY) {
-			sendDMRCaller();
+			sendDMRCaller(slotNo);
 			sendCommand("t9.txt=\"\"");
 		}
 
@@ -1636,7 +1636,7 @@ void CNextion::sendTGName(unsigned int slotNo, bool group, unsigned int dst)
 			name = it->second;
 	}
 
-	sendCommand(std::string(slotNo == 1U ? "t9" : "t8") + ".txt=\"" + name + "\"");
+	sendCommand(std::string(slotNo == 1U ? "t8" : "t9") + ".txt=\"" + name + "\"");
 }
 
 // The talkgroup names: a JSON object ({"91": "Worldwide", ...}, as
@@ -1772,16 +1772,19 @@ void CNextion::writeNXDNCallerInt(unsigned int id)
 		m_nxdnCaller.callsign = std::to_string(id);
 }
 
-// On the DMR page t13 callsign, t14 name, t15 city, t16 state, t17 country
-// (status 78).
-void CNextion::sendDMRCaller()
+// On the DMR page t13 callsign, t15 city, t16 state, t17 country, and the
+// caller's name in the slot's own field so the two timeslots do not overwrite
+// each other: TS1 t19, TS2 t14 (status 78).
+void CNextion::sendDMRCaller(unsigned int slotNo)
 {
 	if (!m_dmrCallerSet)
 		return;
 	m_dmrCallerSet = false;
 
+	const char* nameObj = (slotNo == 1U) ? "t19" : "t14";
+
 	sendCommand("t13.txt=\"" + clean(m_dmrCaller.callsign) + "\"");
-	sendCommand("t14.txt=\"" + clean(m_dmrCaller.name) + "\"");
+	sendCommand(std::string(nameObj) + ".txt=\"" + clean(m_dmrCaller.name) + "\"");
 	sendCommand("t15.txt=\"" + clean(m_dmrCaller.city) + "\"");
 	sendCommand("t16.txt=\"" + clean(m_dmrCaller.state) + "\"");
 	sendCommand("t17.txt=\"" + clean(m_dmrCaller.country) + "\"");
