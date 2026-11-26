@@ -1508,7 +1508,7 @@ void CNextion::sendLastHeard(unsigned int page, unsigned int count)
 		if (n >= count)
 			break;
 
-		char prefix[10U];
+		char prefix[16U];
 		::snprintf(prefix, sizeof(prefix), "LH%u", n);
 		for (const auto& it : call) {
 			// Empty fields are left out
