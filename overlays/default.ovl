@@ -8,7 +8,7 @@
 #  Install: put this file (or your edited copy) in your OverlayDir and select
 #  it in MMDVM-Display.ini:
 #
-#      [Screen]
+#      [FrameBuffer]
 #      OverlayDir=/etc/mmdvm-display/overlays
 #      Overlay=default
 #

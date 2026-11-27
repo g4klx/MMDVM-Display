@@ -18,8 +18,8 @@ It builds on 32-bit and 64-bit Linux. It can control various displays, these are
 - Nextion TFTs (all sizes, both Basic and Enhanced versions)
 - OLED 128x64 (SSD1306)
 - LCDproc
-- Any screen with a Linux framebuffer (Display=Screen): HDMI or DSI monitors,
-  composite video, and SPI TFTs driven by fbtft
+- Any screen with a Linux framebuffer (Display=FrameBuffer): HDMI or DSI
+  monitors, composite video, and SPI TFTs driven by fbtft
 
 The Nextion displays can connect to the UART on the Raspberry Pi, or via a USB
 to TTL serial converter like the FT-232RL. It may also be connected to the UART
@@ -61,32 +61,32 @@ The LCDproc support enables the use of a multitude of other LCD screens. See
 the [supported devices](http://lcdproc.omnipotent.net/hardware.php3) page on
 the LCDproc website for more info.
 
-The Screen display draws the status screens straight to a Linux framebuffer
-device (/dev/fbN), with no X or Wayland, so a monitor plugged into the
-machine running MMDVM-Display (a small HDMI screen on a Raspberry Pi, for
+The FrameBuffer display draws the status screens straight to a Linux
+framebuffer device (/dev/fbN), with no X or Wayland, so a monitor plugged into
+the machine running MMDVM-Display (a small HDMI screen on a Raspberry Pi, for
 example) works as a large status display. It renders at the screen's native
 resolution and aspect ratio, with vector text and mode emblems, and dims when
 idle; on a portrait screen the layout fills the width and is centred top to
-bottom. [Screen] Rotation turns the picture 90, 180 or 270 degrees, for a
+bottom. [FrameBuffer] Rotation turns the picture 90, 180 or 270 degrees, for a
 screen mounted upside down or a portrait panel used landscape.
 
 What each page shows is set by plain-text overlay files, chosen in the
-[Screen] section with OverlayDir and Overlay, so layouts can be changed
+[FrameBuffer] section with OverlayDir and Overlay, so layouts can be changed
 without rebuilding; an overlay can place live fields, text, shapes and its own
 PNG images. The built-in layout is overlays/default.ovl, and
 overlays/README.md explains how to write your own. Where the framebuffer is
 also the text console, the display takes a virtual terminal of its own
-([Screen] VT), and Ctrl+Alt+F1 switches back to the console.
+([FrameBuffer] VT), and Ctrl+Alt+F1 switches back to the console.
 
-The Screen display works on any Linux system with a framebuffer: Raspberry Pi
-and other ARM boards, or an x86 PC. It needs the Linux framebuffer, so it is
+The FrameBuffer display works on any Linux system with a framebuffer:
+Raspberry Pi and other ARM boards, or an x86 PC. It needs the Linux framebuffer, so it is
 left out automatically when building on Windows or any other system. On
 Linux it is built in by default and adds about 216 KB to the stripped binary
 on armhf. To leave it out entirely, build with:
 
-	make NO_SCREEN=1
+	make NO_FRAMEBUFFER=1
 
-Display=Screen is then rejected as an unknown display ("No valid display
+Display=FrameBuffer is then rejected as an unknown display ("No valid display
 found"), as HD44780 and OLED are in a build without them; the other displays
 are unaffected.
 

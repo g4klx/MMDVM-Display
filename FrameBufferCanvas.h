@@ -16,23 +16,24 @@
  *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
-// CScreenCanvas is the renderer behind the Screen display (CDisplayScreen).
-// It paints a status screen into an in-memory RGB565 framebuffer,
-// driven by a community-editable layout (see Layout.h): the write* handlers
-// compose named data fields, and a layout interpreter draws each element.
+// CFrameBufferCanvas is the renderer behind the FrameBuffer display
+// (CFrameBuffer). It paints a status screen into an in-memory RGB565
+// framebuffer, driven by a community-editable layout (see
+// FrameBufferLayout.h): the write* handlers compose named data fields, and a
+// layout interpreter draws each element.
 //
 // The layout is expressed in a fixed 240-high "design space" whose width
 // tracks the screen's aspect ratio; TrueType glyphs and vector emblems are
 // rasterised at the real output pixel size, so the output is crisp at any
 // resolution.
 
-#if !defined(SCREENCANVAS_H)
-#define SCREENCANVAS_H
+#if !defined(FRAMEBUFFERCANVAS_H)
+#define FRAMEBUFFERCANVAS_H
 
 #include "Display.h"
 #include "Defines.h"
 #include "Timer.h"
-#include "Layout.h"
+#include "FrameBufferLayout.h"
 #include "stb_truetype.h"
 
 #include <string>
@@ -40,11 +41,11 @@
 #include <vector>
 #include <map>
 
-class CScreenCanvas : public CDisplay {
+class CFrameBufferCanvas : public CDisplay {
 public:
-	CScreenCanvas(double designW, double designH, double scale, unsigned int brightness,
+	CFrameBufferCanvas(double designW, double designH, double scale, unsigned int brightness,
 		   unsigned int idleBrightness, unsigned int idleTimeout, const std::string& layoutPath = "default");
-	virtual ~CScreenCanvas();
+	virtual ~CFrameBufferCanvas();
 
 	virtual bool open() override;
 	virtual void close() override;
@@ -160,7 +161,7 @@ private:
 
 	// ---- Layout + field state ----
 	std::string   m_layoutPath;
-	CLayout       m_layout;
+	CFrameBufferLayout m_layout;
 	std::map<std::string, std::string> m_fields;   // named display values
 	unsigned char m_mode;
 	bool          m_duplex;

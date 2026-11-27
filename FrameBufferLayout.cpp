@@ -12,7 +12,7 @@
  *   GNU General Public License for more details.
  */
 
-#include "Layout.h"
+#include "FrameBufferLayout.h"
 #include "Log.h"
 
 #include <cstdio>
@@ -32,7 +32,7 @@ static const char* DEFAULT_LAYOUT = R"LAYOUT(
 #  Install: put this file (or your edited copy) in your OverlayDir and select
 #  it in MMDVM-Display.ini:
 #
-#      [Screen]
+#      [FrameBuffer]
 #      OverlayDir=/etc/mmdvm-display/overlays
 #      Overlay=default
 #
@@ -107,7 +107,7 @@ wordmark
 text "CW ID"   x=center y=141 size=L align=center color=ink
 )LAYOUT";
 
-CLayout::CLayout()
+CFrameBufferLayout::CFrameBufferLayout()
 {
 }
 
@@ -149,7 +149,7 @@ static void setAttr(LElement& e, const std::string& key, const std::string& val)
 	else if (key == "r" || key == "radius") e.radius = val;
 }
 
-bool CLayout::parseInto(const std::string& text, std::map<std::string, std::vector<LElement> >& out) const
+bool CFrameBufferLayout::parseInto(const std::string& text, std::map<std::string, std::vector<LElement> >& out) const
 {
 	out.clear();
 	std::string cur;                 // current page name
@@ -194,13 +194,13 @@ bool CLayout::parseInto(const std::string& text, std::map<std::string, std::vect
 	return !out.empty();
 }
 
-void CLayout::loadDefault()
+void CFrameBufferLayout::loadDefault()
 {
 	parseInto(DEFAULT_LAYOUT, m_pages);
 	m_defaults = m_pages;
 }
 
-bool CLayout::load(const std::string& path)
+bool CFrameBufferLayout::load(const std::string& path)
 {
 	if (!path.empty() && path != "default") {
 		FILE* fp = ::fopen(path.c_str(), "rb");
@@ -213,19 +213,19 @@ bool CLayout::load(const std::string& path)
 			::fclose(fp);
 			if (parseInto(text, m_pages)) {
 				parseInto(DEFAULT_LAYOUT, m_defaults);
-				LogMessage("Screen: loaded layout %s (%zu pages; missing pages fall back to default)", path.c_str(), m_pages.size());
+				LogMessage("FrameBuffer: loaded layout %s (%zu pages; missing pages fall back to default)", path.c_str(), m_pages.size());
 				return true;
 			}
-			LogError("Screen: layout %s is empty or invalid; using the default", path.c_str());
+			LogError("FrameBuffer: layout %s is empty or invalid; using the default", path.c_str());
 		} else {
-			LogError("Screen: cannot open layout %s; using the default", path.c_str());
+			LogError("FrameBuffer: cannot open layout %s; using the default", path.c_str());
 		}
 	}
 	loadDefault();
 	return false;
 }
 
-const std::vector<LElement>* CLayout::page(const std::string& name) const
+const std::vector<LElement>* CFrameBufferLayout::page(const std::string& name) const
 {
 	auto it = m_pages.find(name);
 	if (it != m_pages.end()) return &it->second;

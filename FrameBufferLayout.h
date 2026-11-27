@@ -19,7 +19,7 @@
 // A community-editable screen layout, loaded from a plain-text file (or the
 // built-in default). It is organised like a Nextion project: named "pages"
 // (idle, call, dmr2, error, ...) each holding a list of "elements" that bind
-// named data fields to a position and style. The renderer (CScreenCanvas) walks
+// named data fields to a position and style. The renderer (CFrameBufferCanvas) walks
 // the active page and draws each element, substituting live field values.
 //
 // Format (one element per line; blank lines and # comments ignored):
@@ -36,8 +36,8 @@
 // the keywords center/right/bottom, "fill" (the content width), or a sum of
 // those, e.g. 50%-82 or 100%-16.
 
-#if !defined(LAYOUT_H)
-#define LAYOUT_H
+#if !defined(FRAMEBUFFERLAYOUT_H)
+#define FRAMEBUFFERLAYOUT_H
 
 #include <string>
 #include <vector>
@@ -50,9 +50,9 @@ struct LElement {
 	std::string size, align, color, fit, radius;
 };
 
-class CLayout {
+class CFrameBufferLayout {
 public:
-	CLayout();
+	CFrameBufferLayout();
 
 	// Load from a file; on any failure fall back to the built-in default.
 	// Returns true if the named file was used, false if the default was used.

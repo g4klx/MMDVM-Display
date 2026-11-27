@@ -13,7 +13,7 @@
  */
 
 #define STB_TRUETYPE_IMPLEMENTATION
-#include "ScreenCanvas.h"
+#include "FrameBufferCanvas.h"
 #include "Font_ttf.h"
 #include "Log.h"
 
@@ -75,7 +75,7 @@ static inline uint16_t blend565(uint16_t bg, uint16_t fg, uint8_t cov)
 	return pack565(r, g, b);
 }
 
-CScreenCanvas::CScreenCanvas(double designW, double designH, double scale, unsigned int brightness,
+CFrameBufferCanvas::CFrameBufferCanvas(double designW, double designH, double scale, unsigned int brightness,
 		       unsigned int idleBrightness, unsigned int idleTimeout, const std::string& layoutPath) :
 CDisplay(),
 m_width((unsigned int)lround(designW * scale)),
@@ -112,7 +112,7 @@ m_idleTimer(1000U, idleTimeout)
 	int off = stbtt_GetFontOffsetForIndex(dejavu_mono_bold, 0);
 	m_fontOk = (off >= 0) && (stbtt_InitFont(&m_font, dejavu_mono_bold, off) != 0);
 	if (!m_fontOk)
-		LogError("Screen: embedded font failed to initialise; text will be blank");
+		LogError("FrameBuffer: embedded font failed to initialise; text will be blank");
 
 	int asc = 0, desc = 0, gap = 0, aw = 0, lsb = 0;
 	double sc1 = 0.0;   // scale for an em of 1 design px == 1 / unitsPerEm
@@ -129,25 +129,25 @@ m_idleTimer(1000U, idleTimeout)
 	m_capRatio   = (capY1 - capY0) * sc1;   // cap height, em units
 }
 
-CScreenCanvas::~CScreenCanvas()
+CFrameBufferCanvas::~CFrameBufferCanvas()
 {
 }
 
-inline int CScreenCanvas::px(double designUnits) const
+inline int CFrameBufferCanvas::px(double designUnits) const
 {
 	return (int)lround(designUnits * m_scale);
 }
 
-bool CScreenCanvas::open()
+bool CFrameBufferCanvas::open()
 {
 	if (m_width == 0U || m_height == 0U || m_width > 8192U || m_height > 8192U) {
-		LogError("Screen: implausible canvas size %ux%u", m_width, m_height);
+		LogError("FrameBuffer: implausible canvas size %ux%u", m_width, m_height);
 		return false;
 	}
 	try {
 		m_fb.assign((size_t)m_width * m_height, C_WHITE);
 	} catch (const std::bad_alloc&) {
-		LogError("Screen: cannot allocate %ux%u canvas", m_width, m_height);
+		LogError("FrameBuffer: cannot allocate %ux%u canvas", m_width, m_height);
 		return false;
 	}
 
@@ -168,7 +168,7 @@ bool CScreenCanvas::open()
 	return true;
 }
 
-void CScreenCanvas::close()
+void CFrameBufferCanvas::close()
 {
 	closeOutput();
 	m_fb.clear();
@@ -177,7 +177,7 @@ void CScreenCanvas::close()
 
 // ---- Vector font ----
 
-const CScreenCanvas::GlyphBmp& CScreenCanvas::glyph(int ch, int renderPx)
+const CFrameBufferCanvas::GlyphBmp& CFrameBufferCanvas::glyph(int ch, int renderPx)
 {
 	uint32_t key = ((uint32_t)renderPx << 9) | ((uint32_t)ch & 0x1FFU);
 	auto it = m_glyphs.find(key);
@@ -200,7 +200,7 @@ const CScreenCanvas::GlyphBmp& CScreenCanvas::glyph(int ch, int renderPx)
 	return res.first->second;
 }
 
-void CScreenCanvas::drawGlyphPx(int px0, int py0, const GlyphBmp& g, uint16_t colour)
+void CFrameBufferCanvas::drawGlyphPx(int px0, int py0, const GlyphBmp& g, uint16_t colour)
 {
 	for (int gy = 0; gy < g.h; gy++) {
 		int py = py0 + gy;
@@ -217,12 +217,12 @@ void CScreenCanvas::drawGlyphPx(int px0, int py0, const GlyphBmp& g, uint16_t co
 	}
 }
 
-int CScreenCanvas::lineH(FontSize f) const
+int CFrameBufferCanvas::lineH(FontSize f) const
 {
 	return (int)lround(m_lineHRatio * m_emSize[f]);
 }
 
-double CScreenCanvas::textWidthEm(const std::string& s, double em) const
+double CFrameBufferCanvas::textWidthEm(const std::string& s, double em) const
 {
 	return (double)s.size() * m_advRatio * em;   // design units
 }
@@ -230,7 +230,7 @@ double CScreenCanvas::textWidthEm(const std::string& s, double em) const
 // Shrink the em until the string fits maxWidth (design units), with a floor.
 // The result is quantised so that the rasterised pixel size snaps to a small
 // set of values, which bounds how many distinct glyph bitmaps get cached.
-double CScreenCanvas::fitEm(const std::string& s, double emMax, double maxWidth) const
+double CFrameBufferCanvas::fitEm(const std::string& s, double emMax, double maxWidth) const
 {
 	double natural = textWidthEm(s, emMax);
 	if (natural <= maxWidth || natural <= 0.0 || maxWidth <= 0.0)
@@ -250,7 +250,7 @@ double CScreenCanvas::fitEm(const std::string& s, double emMax, double maxWidth)
 	return em;
 }
 
-void CScreenCanvas::drawTextEm(double x, double y, const std::string& s, double em, uint16_t colour)
+void CFrameBufferCanvas::drawTextEm(double x, double y, const std::string& s, double em, uint16_t colour)
 {
 	int rpx      = px(em);
 	int penx     = px(x);
@@ -268,32 +268,32 @@ void CScreenCanvas::drawTextEm(double x, double y, const std::string& s, double 
 	}
 }
 
-void CScreenCanvas::drawTextEmC(double cx, double y, const std::string& s, double em, uint16_t colour)
+void CFrameBufferCanvas::drawTextEmC(double cx, double y, const std::string& s, double em, uint16_t colour)
 {
 	drawTextEm(cx - textWidthEm(s, em) / 2.0, y, s, em, colour);
 }
 
-void CScreenCanvas::drawTextEmR(double rx, double y, const std::string& s, double em, uint16_t colour)
+void CFrameBufferCanvas::drawTextEmR(double rx, double y, const std::string& s, double em, uint16_t colour)
 {
 	drawTextEm(rx - textWidthEm(s, em), y, s, em, colour);
 }
 
-void CScreenCanvas::drawText(double x, double y, const std::string& s, FontSize f, uint16_t colour)
+void CFrameBufferCanvas::drawText(double x, double y, const std::string& s, FontSize f, uint16_t colour)
 {
 	drawTextEm(x, y, s, m_emSize[f], colour);
 }
 
-void CScreenCanvas::drawTextC(double cx, double y, const std::string& s, FontSize f, uint16_t colour)
+void CFrameBufferCanvas::drawTextC(double cx, double y, const std::string& s, FontSize f, uint16_t colour)
 {
 	drawTextEmC(cx, y, s, m_emSize[f], colour);
 }
 
-void CScreenCanvas::drawTextR(double rx, double y, const std::string& s, FontSize f, uint16_t colour)
+void CFrameBufferCanvas::drawTextR(double rx, double y, const std::string& s, FontSize f, uint16_t colour)
 {
 	drawTextEmR(rx, y, s, m_emSize[f], colour);
 }
 
-std::string CScreenCanvas::fitText(const std::string& s, double emMax, double maxWidth, double& emOut) const
+std::string CFrameBufferCanvas::fitText(const std::string& s, double emMax, double maxWidth, double& emOut) const
 {
 	double em = fitEm(s, emMax, maxWidth);
 	// If it still overflows at the shrink floor, truncate with an ellipsis.
@@ -311,14 +311,14 @@ std::string CScreenCanvas::fitText(const std::string& s, double emMax, double ma
 
 // ---- Primitives ----
 
-void CScreenCanvas::fill(uint16_t colour)
+void CFrameBufferCanvas::fill(uint16_t colour)
 {
 	size_t n = (size_t)m_width * m_height;
 	for (size_t i = 0; i < n; i++)
 		m_fb[i] = colour;
 }
 
-void CScreenCanvas::fillRect(double x, double y, double w, double h, uint16_t colour)
+void CFrameBufferCanvas::fillRect(double x, double y, double w, double h, uint16_t colour)
 {
 	int x0 = px(x), y0 = px(y), x1 = px(x + w), y1 = px(y + h);
 	if (x0 < 0) x0 = 0;
@@ -330,7 +330,7 @@ void CScreenCanvas::fillRect(double x, double y, double w, double h, uint16_t co
 			m_fb[(size_t)j * m_width + i] = colour;
 }
 
-void CScreenCanvas::hline(double x, double y, double w, uint16_t colour)
+void CFrameBufferCanvas::hline(double x, double y, double w, uint16_t colour)
 {
 	fillRect(x, y, w, 1.0, colour);
 }
@@ -368,7 +368,7 @@ static uint16_t accentFor(unsigned char mode)
 
 // ---- Anti-aliased vector primitives (design-space inputs) ----
 
-void CScreenCanvas::blendPx(int x, int y, uint16_t colour, double cov)
+void CFrameBufferCanvas::blendPx(int x, int y, uint16_t colour, double cov)
 {
 	if (x < 0 || x >= (int)m_width || y < 0 || y >= (int)m_height) return;
 	if (cov <= 0.0) return;
@@ -377,7 +377,7 @@ void CScreenCanvas::blendPx(int x, int y, uint16_t colour, double cov)
 	*dst = blend565(*dst, colour, (uint8_t)lround(cov * 255.0));
 }
 
-void CScreenCanvas::fillCircleAA(double cx, double cy, double r, uint16_t colour)
+void CFrameBufferCanvas::fillCircleAA(double cx, double cy, double r, uint16_t colour)
 {
 	double fcx = pxf(cx), fcy = pxf(cy), fr = r * m_scale;
 	int x0 = (int)std::floor(fcx - fr - 1), x1 = (int)std::ceil(fcx + fr + 1);
@@ -389,7 +389,7 @@ void CScreenCanvas::fillCircleAA(double cx, double cy, double r, uint16_t colour
 		}
 }
 
-void CScreenCanvas::ringAA(double cx, double cy, double rOuter, double rInner, uint16_t colour)
+void CFrameBufferCanvas::ringAA(double cx, double cy, double rOuter, double rInner, uint16_t colour)
 {
 	double fcx = pxf(cx), fcy = pxf(cy), ro = rOuter * m_scale, ri = rInner * m_scale;
 	int x0 = (int)std::floor(fcx - ro - 1), x1 = (int)std::ceil(fcx + ro + 1);
@@ -402,7 +402,7 @@ void CScreenCanvas::ringAA(double cx, double cy, double rOuter, double rInner, u
 		}
 }
 
-void CScreenCanvas::fillRoundRectAA(double x, double y, double w, double h, double r, uint16_t colTop, uint16_t colBot)
+void CFrameBufferCanvas::fillRoundRectAA(double x, double y, double w, double h, double r, uint16_t colTop, uint16_t colBot)
 {
 	double fx = pxf(x), fy = pxf(y), fw = w * m_scale, fh = h * m_scale, fr = r * m_scale;
 	double cx = fx + fw / 2, cy = fy + fh / 2, hx = fw / 2 - fr, hy = fh / 2 - fr;
@@ -423,7 +423,7 @@ void CScreenCanvas::fillRoundRectAA(double x, double y, double w, double h, doub
 	}
 }
 
-void CScreenCanvas::fillPolyAA(const std::vector<double>& pts, uint16_t colour)
+void CFrameBufferCanvas::fillPolyAA(const std::vector<double>& pts, uint16_t colour)
 {
 	int n = (int)pts.size() / 2;
 	if (n < 3) return;
@@ -456,7 +456,7 @@ void CScreenCanvas::fillPolyAA(const std::vector<double>& pts, uint16_t colour)
 
 // ---- Mode emblem: slick accent tile + white icon ----
 
-void CScreenCanvas::drawEmblem(unsigned char mode, uint16_t accent, double x, double y, double s)
+void CFrameBufferCanvas::drawEmblem(unsigned char mode, uint16_t accent, double x, double y, double s)
 {
 	fillRoundRectAA(x + s * 0.035, y + s * 0.07, s, s, s * 0.26, RGB(206, 211, 217), RGB(206, 211, 217)); // shadow
 	fillRoundRectAA(x, y, s, s, s * 0.26, lighten(accent, 0.30), darken(accent, 0.06));            // tile
@@ -523,7 +523,7 @@ void CScreenCanvas::drawEmblem(unsigned char mode, uint16_t accent, double x, do
 	}
 }
 
-int CScreenCanvas::banner(unsigned char mode, const char* name, bool wordmark)
+int CFrameBufferCanvas::banner(unsigned char mode, const char* name, bool wordmark)
 {
 	const int H = 100;
 	const uint16_t accent = accentFor(mode);
@@ -567,20 +567,20 @@ static std::string mhz(unsigned int hz)
 
 // ---- Field helpers ----
 
-void CScreenCanvas::setField(const std::string& key, const std::string& value)
+void CFrameBufferCanvas::setField(const std::string& key, const std::string& value)
 {
 	if (value.empty()) m_fields.erase(key);
 	else               m_fields[key] = value;
 }
 
-void CScreenCanvas::clearCallFields()
+void CFrameBufferCanvas::clearCallFields()
 {
 	static const char* keys[] = { "src","dst","info","ta","rssi1","ber1",
 		"s1src","s1dst","s1ta","s1rssi","s1ber","s2src","s2dst","s2ta","s2rssi","s2ber" };
 	for (const char* k : keys) m_fields.erase(k);
 }
 
-void CScreenCanvas::updateStatus()
+void CFrameBufferCanvas::updateStatus()
 {
 	std::string s;
 	if (m_temperature > 0.1F) { char b[32]; ::snprintf(b, sizeof(b), "%.1f C", m_temperature); s = b; }
@@ -588,7 +588,7 @@ void CScreenCanvas::updateStatus()
 	setField("status", s);
 }
 
-const char* CScreenCanvas::modeName(unsigned char mode)
+const char* CFrameBufferCanvas::modeName(unsigned char mode)
 {
 	switch (mode) {
 	case MODE_DSTAR:  return "D-STAR";
@@ -604,7 +604,7 @@ const char* CScreenCanvas::modeName(unsigned char mode)
 
 // Expand $field references; set skip if the element should not be drawn
 // (any referenced field is empty, or the result is empty).
-std::string CScreenCanvas::substitute(const std::string& tmpl, bool& skip) const
+std::string CFrameBufferCanvas::substitute(const std::string& tmpl, bool& skip) const
 {
 	std::string out;
 	bool hadField = false, emptyField = false;
@@ -629,7 +629,7 @@ std::string CScreenCanvas::substitute(const std::string& tmpl, bool& skip) const
 
 // ---- Layout interpreter ----
 
-double CScreenCanvas::resolveDim(const std::string& tok, double ref) const
+double CFrameBufferCanvas::resolveDim(const std::string& tok, double ref) const
 {
 	double total = 0.0, sign = 1.0;
 	size_t i = 0;
@@ -656,7 +656,7 @@ double CScreenCanvas::resolveDim(const std::string& tok, double ref) const
 	return total;
 }
 
-double CScreenCanvas::resolveEm(const std::string& tok) const
+double CFrameBufferCanvas::resolveEm(const std::string& tok) const
 {
 	if (tok == "S" || tok == "s") return m_emSize[SZ_S];
 	if (tok == "L" || tok == "l") return m_emSize[SZ_L];
@@ -665,7 +665,7 @@ double CScreenCanvas::resolveEm(const std::string& tok) const
 	return v > 0.0 ? v : m_emSize[SZ_M];
 }
 
-uint16_t CScreenCanvas::resolveColour(const std::string& name) const
+uint16_t CFrameBufferCanvas::resolveColour(const std::string& name) const
 {
 	if (name == "ink" || name.empty()) return GREY_DK;
 	if (name == "black")               return C_BLACK;
@@ -680,7 +680,7 @@ uint16_t CScreenCanvas::resolveColour(const std::string& name) const
 
 // Load (and cache) a PNG overlay asset as RGBA. Failures are cached too, so a
 // missing file is logged once and then quietly skipped on every later frame.
-const CScreenCanvas::ImageBmp& CScreenCanvas::image(const std::string& path)
+const CFrameBufferCanvas::ImageBmp& CFrameBufferCanvas::image(const std::string& path)
 {
 	std::map<std::string, ImageBmp>::iterator it = m_images.find(path);
 	if (it != m_images.end())
@@ -712,7 +712,7 @@ const CScreenCanvas::ImageBmp& CScreenCanvas::image(const std::string& path)
 // Draw a PNG asset into the design space, preserving its aspect ratio. One of
 // w/h sizes it (the other follows the aspect); both give a box it fits inside.
 // x is anchored by align (left/center/right); y is the element's vertical centre.
-void CScreenCanvas::drawImage(const LElement& el)
+void CFrameBufferCanvas::drawImage(const LElement& el)
 {
 	if (el.text.empty())
 		return;
@@ -777,7 +777,7 @@ void CScreenCanvas::drawImage(const LElement& el)
 	}
 }
 
-void CScreenCanvas::renderElement(const LElement& el)
+void CFrameBufferCanvas::renderElement(const LElement& el)
 {
 	if (el.kind == "wordmark") { banner(MODE_IDLE, "MMDVM", true); return; }
 	if (el.kind == "banner")   { banner(m_mode, modeName(m_mode), false); return; }
@@ -817,7 +817,7 @@ void CScreenCanvas::renderElement(const LElement& el)
 	}
 }
 
-void CScreenCanvas::renderPage(const std::string& name)
+void CFrameBufferCanvas::renderPage(const std::string& name)
 {
 	fill(C_WHITE);
 	const std::vector<LElement>* elems = m_layout.page(name);
@@ -827,7 +827,7 @@ void CScreenCanvas::renderPage(const std::string& name)
 		renderElement(el);
 }
 
-void CScreenCanvas::touchActivity()
+void CFrameBufferCanvas::touchActivity()
 {
 	m_idleTimer.start();
 	if (m_dimmed) {
@@ -851,7 +851,7 @@ static int dmrPos(unsigned int slotNo, bool duplex)
 	return (int)slotNo - 1;
 }
 
-void CScreenCanvas::redraw()
+void CFrameBufferCanvas::redraw()
 {
 	if (m_fb.empty())
 		return;
@@ -874,7 +874,7 @@ void CScreenCanvas::redraw()
 
 // ---- CDisplay overrides (these only mutate fields + mark dirty) ----
 
-void CScreenCanvas::setIdleInt()
+void CFrameBufferCanvas::setIdleInt()
 {
 	m_mode = MODE_IDLE;
 	clearCallFields();
@@ -882,11 +882,11 @@ void CScreenCanvas::setIdleInt()
 	markDirty();
 }
 
-void CScreenCanvas::setErrorInt()   { m_mode = MODE_ERROR;   touchActivity(); markDirty(); }
-void CScreenCanvas::setLockoutInt() { m_mode = MODE_LOCKOUT; touchActivity(); markDirty(); }
-void CScreenCanvas::setQuitInt()    { m_mode = MODE_QUIT;    markDirty(); }
+void CFrameBufferCanvas::setErrorInt()   { m_mode = MODE_ERROR;   touchActivity(); markDirty(); }
+void CFrameBufferCanvas::setLockoutInt() { m_mode = MODE_LOCKOUT; touchActivity(); markDirty(); }
+void CFrameBufferCanvas::setQuitInt()    { m_mode = MODE_QUIT;    markDirty(); }
 
-void CScreenCanvas::writeDStarInt(const std::string& my1, const std::string& my2, const std::string& your, const std::string& type, const std::string& reflector)
+void CFrameBufferCanvas::writeDStarInt(const std::string& my1, const std::string& my2, const std::string& your, const std::string& type, const std::string& reflector)
 {
 	clearCallFields();
 	char buf[128];
@@ -899,11 +899,11 @@ void CScreenCanvas::writeDStarInt(const std::string& my1, const std::string& my2
 	markDirty();
 }
 
-void CScreenCanvas::writeDStarRSSIInt(int rssi) { char b[32]; ::snprintf(b, sizeof(b), "RSSI %ddBm", rssi); setField("rssi1", b); markDirty(); }
-void CScreenCanvas::writeDStarBERInt(float ber) { char b[32]; ::snprintf(b, sizeof(b), "BER %.1f%%", ber);  setField("ber1",  b); markDirty(); }
-void CScreenCanvas::clearDStarInt() { clearCallFields(); setField("src", "Listening"); markDirty(); }
+void CFrameBufferCanvas::writeDStarRSSIInt(int rssi) { char b[32]; ::snprintf(b, sizeof(b), "RSSI %ddBm", rssi); setField("rssi1", b); markDirty(); }
+void CFrameBufferCanvas::writeDStarBERInt(float ber) { char b[32]; ::snprintf(b, sizeof(b), "BER %.1f%%", ber);  setField("ber1",  b); markDirty(); }
+void CFrameBufferCanvas::clearDStarInt() { clearCallFields(); setField("src", "Listening"); markDirty(); }
 
-void CScreenCanvas::writeDMRInt(unsigned int slotNo, const std::string& src, bool group, unsigned int dst, const std::string& type)
+void CFrameBufferCanvas::writeDMRInt(unsigned int slotNo, const std::string& src, bool group, unsigned int dst, const std::string& type)
 {
 	int pos = dmrPos(slotNo, m_duplex);
 	if (pos < 0) return;
@@ -922,7 +922,7 @@ void CScreenCanvas::writeDMRInt(unsigned int slotNo, const std::string& src, boo
 	markDirty();
 }
 
-void CScreenCanvas::writeDMRRSSIInt(unsigned int slotNo, int rssi)
+void CFrameBufferCanvas::writeDMRRSSIInt(unsigned int slotNo, int rssi)
 {
 	int pos = dmrPos(slotNo, m_duplex);
 	if (pos < 0) return;
@@ -932,7 +932,7 @@ void CScreenCanvas::writeDMRRSSIInt(unsigned int slotNo, int rssi)
 	markDirty();
 }
 
-void CScreenCanvas::writeDMRTAInt(unsigned int slotNo, const std::string& talkerAlias)
+void CFrameBufferCanvas::writeDMRTAInt(unsigned int slotNo, const std::string& talkerAlias)
 {
 	int pos = dmrPos(slotNo, m_duplex);
 	if (pos < 0) return;
@@ -940,7 +940,7 @@ void CScreenCanvas::writeDMRTAInt(unsigned int slotNo, const std::string& talker
 	markDirty();
 }
 
-void CScreenCanvas::writeDMRBERInt(unsigned int slotNo, float ber)
+void CFrameBufferCanvas::writeDMRBERInt(unsigned int slotNo, float ber)
 {
 	int pos = dmrPos(slotNo, m_duplex);
 	if (pos < 0) return;
@@ -950,7 +950,7 @@ void CScreenCanvas::writeDMRBERInt(unsigned int slotNo, float ber)
 	markDirty();
 }
 
-void CScreenCanvas::clearDMRInt(unsigned int slotNo)
+void CFrameBufferCanvas::clearDMRInt(unsigned int slotNo)
 {
 	int pos = dmrPos(slotNo, m_duplex);
 	if (pos < 0) return;
@@ -966,7 +966,7 @@ void CScreenCanvas::clearDMRInt(unsigned int slotNo)
 	markDirty();
 }
 
-void CScreenCanvas::writeFusionInt(const std::string& source, const std::string& dest, unsigned char dgid, const std::string& type, const std::string& origin)
+void CFrameBufferCanvas::writeFusionInt(const std::string& source, const std::string& dest, unsigned char dgid, const std::string& type, const std::string& origin)
 {
 	(void)dest;
 	clearCallFields();
@@ -979,11 +979,11 @@ void CScreenCanvas::writeFusionInt(const std::string& source, const std::string&
 	markDirty();
 }
 
-void CScreenCanvas::writeFusionRSSIInt(int rssi) { writeDStarRSSIInt(rssi); }
-void CScreenCanvas::writeFusionBERInt(float ber) { writeDStarBERInt(ber); }
-void CScreenCanvas::clearFusionInt() { clearDStarInt(); }
+void CFrameBufferCanvas::writeFusionRSSIInt(int rssi) { writeDStarRSSIInt(rssi); }
+void CFrameBufferCanvas::writeFusionBERInt(float ber) { writeDStarBERInt(ber); }
+void CFrameBufferCanvas::clearFusionInt() { clearDStarInt(); }
 
-void CScreenCanvas::writeP25Int(const std::string& source, bool group, unsigned int dest, const std::string& type)
+void CFrameBufferCanvas::writeP25Int(const std::string& source, bool group, unsigned int dest, const std::string& type)
 {
 	clearCallFields();
 	char buf[128];
@@ -994,11 +994,11 @@ void CScreenCanvas::writeP25Int(const std::string& source, bool group, unsigned 
 	markDirty();
 }
 
-void CScreenCanvas::writeP25RSSIInt(int rssi) { writeDStarRSSIInt(rssi); }
-void CScreenCanvas::writeP25BERInt(float ber) { writeDStarBERInt(ber); }
-void CScreenCanvas::clearP25Int() { clearDStarInt(); }
+void CFrameBufferCanvas::writeP25RSSIInt(int rssi) { writeDStarRSSIInt(rssi); }
+void CFrameBufferCanvas::writeP25BERInt(float ber) { writeDStarBERInt(ber); }
+void CFrameBufferCanvas::clearP25Int() { clearDStarInt(); }
 
-void CScreenCanvas::writeNXDNInt(const std::string& source, bool group, unsigned int dest, const std::string& type)
+void CFrameBufferCanvas::writeNXDNInt(const std::string& source, bool group, unsigned int dest, const std::string& type)
 {
 	clearCallFields();
 	char buf[128];
@@ -1009,11 +1009,11 @@ void CScreenCanvas::writeNXDNInt(const std::string& source, bool group, unsigned
 	markDirty();
 }
 
-void CScreenCanvas::writeNXDNRSSIInt(int rssi) { writeDStarRSSIInt(rssi); }
-void CScreenCanvas::writeNXDNBERInt(float ber) { writeDStarBERInt(ber); }
-void CScreenCanvas::clearNXDNInt() { clearDStarInt(); }
+void CFrameBufferCanvas::writeNXDNRSSIInt(int rssi) { writeDStarRSSIInt(rssi); }
+void CFrameBufferCanvas::writeNXDNBERInt(float ber) { writeDStarBERInt(ber); }
+void CFrameBufferCanvas::clearNXDNInt() { clearDStarInt(); }
 
-void CScreenCanvas::writePOCSAGInt(uint32_t ric, const std::string& message)
+void CFrameBufferCanvas::writePOCSAGInt(uint32_t ric, const std::string& message)
 {
 	clearCallFields();
 	char buf[64]; ::snprintf(buf, sizeof(buf), "RIC %u", ric); setField("src", buf);
@@ -1023,9 +1023,9 @@ void CScreenCanvas::writePOCSAGInt(uint32_t ric, const std::string& message)
 	markDirty();
 }
 
-void CScreenCanvas::clearPOCSAGInt() { clearCallFields(); setField("src", "Waiting"); markDirty(); }
+void CFrameBufferCanvas::clearPOCSAGInt() { clearCallFields(); setField("src", "Waiting"); markDirty(); }
 
-void CScreenCanvas::writeFMInt(const std::string& state)
+void CFrameBufferCanvas::writeFMInt(const std::string& state)
 {
 	clearCallFields();
 	setField("src", state);
@@ -1034,18 +1034,18 @@ void CScreenCanvas::writeFMInt(const std::string& state)
 	markDirty();
 }
 
-void CScreenCanvas::clearFMInt() { clearDStarInt(); }
+void CFrameBufferCanvas::clearFMInt() { clearDStarInt(); }
 
-void CScreenCanvas::writeCWInt()
+void CFrameBufferCanvas::writeCWInt()
 {
 	m_mode = MODE_CW;
 	touchActivity();
 	markDirty();
 }
 
-void CScreenCanvas::clearCWInt() { setIdleInt(); }
+void CFrameBufferCanvas::clearCWInt() { setIdleInt(); }
 
-void CScreenCanvas::writeGeneralInt(const std::string& callsign, unsigned int id, bool duplex)
+void CFrameBufferCanvas::writeGeneralInt(const std::string& callsign, unsigned int id, bool duplex)
 {
 	setField("callsign", callsign.empty() ? "--------" : callsign);
 	if (id != 0U) { char b[32]; ::snprintf(b, sizeof(b), "ID %u", id); setField("id", b); }
@@ -1054,7 +1054,7 @@ void CScreenCanvas::writeGeneralInt(const std::string& callsign, unsigned int id
 	markDirty();
 }
 
-void CScreenCanvas::writeCPUInt(float temperature, float frequency, float load)
+void CFrameBufferCanvas::writeCPUInt(float temperature, float frequency, float load)
 {
 	(void)frequency; (void)load;
 	m_temperature = temperature;
@@ -1062,7 +1062,7 @@ void CScreenCanvas::writeCPUInt(float temperature, float frequency, float load)
 	markDirty();
 }
 
-void CScreenCanvas::writeInfoInt(unsigned int rxFrequency, unsigned int txFrequency, const std::string& location)
+void CFrameBufferCanvas::writeInfoInt(unsigned int rxFrequency, unsigned int txFrequency, const std::string& location)
 {
 	setField("rx", mhz(rxFrequency));
 	setField("tx", mhz(txFrequency));
@@ -1071,7 +1071,7 @@ void CScreenCanvas::writeInfoInt(unsigned int rxFrequency, unsigned int txFreque
 	markDirty();
 }
 
-void CScreenCanvas::writeIPInt(const std::string& name, const std::string& ipV4, const std::string& ipV6)
+void CFrameBufferCanvas::writeIPInt(const std::string& name, const std::string& ipV4, const std::string& ipV6)
 {
 	(void)ipV6;
 	std::string ip = ipV4;
@@ -1080,7 +1080,7 @@ void CScreenCanvas::writeIPInt(const std::string& name, const std::string& ipV4,
 	markDirty();
 }
 
-void CScreenCanvas::clockInt(unsigned int ms)
+void CFrameBufferCanvas::clockInt(unsigned int ms)
 {
 	backendTick();
 
@@ -1127,7 +1127,7 @@ static void chunk(std::vector<uint8_t>& out, const char* type, const std::vector
 	put32(out, crc32_png(td.data(), td.size(), 0));
 }
 
-bool CScreenCanvas::dumpPNG(const std::string& path) const
+bool CFrameBufferCanvas::dumpPNG(const std::string& path) const
 {
 	if (m_fb.empty())
 		return false;

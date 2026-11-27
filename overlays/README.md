@@ -16,7 +16,7 @@ as a worked example to copy and modify.
 In `MMDVM-Display.ini`:
 
 ```ini
-[Screen]
+[FrameBuffer]
 Device=/dev/fb0
 OverlayDir=/etc/mmdvm-display/overlays
 Overlay=default

@@ -32,7 +32,7 @@ enum class SECTION {
 	LOG,
 	MQTT,
 	TFT_SURENOO,
-	SCREEN,
+	FRAMEBUFFER,
 	HD44780,
 	NEXTION,
 	OLED,
@@ -61,14 +61,14 @@ m_hostConfName("MMDVM-Host"),
 m_tftSurenooPort("/dev/ttyAMA0"),
 m_tftSurenooBrightness(50U),
 m_tftSurenooScreenLayout(0U),
-m_screenDevice("/dev/fb0"),
-m_screenRotation(0U),
-m_screenBrightness(100U),
-m_screenIdleBrightness(20U),
-m_screenIdleTimeout(20U),
-m_screenOverlayDir(),
-m_screenOverlay("default"),
-m_screenVT("auto"),
+m_frameBufferDevice("/dev/fb0"),
+m_frameBufferRotation(0U),
+m_frameBufferBrightness(100U),
+m_frameBufferIdleBrightness(20U),
+m_frameBufferIdleTimeout(20U),
+m_frameBufferOverlayDir(),
+m_frameBufferOverlay("default"),
+m_frameBufferVT("auto"),
 m_hd44780Rows(2U),
 m_hd44780Columns(16U),
 m_hd44780Pins(),
@@ -133,8 +133,8 @@ bool CConf::read()
 				section = SECTION::MQTT;
 			else if (::strncmp(buffer, "[TFT Surenoo]", 13U) == 0)
 				section = SECTION::TFT_SURENOO;
-			else if (::strncmp(buffer, "[Screen]", 8U) == 0)
-				section = SECTION::SCREEN;
+			else if (::strncmp(buffer, "[FrameBuffer]", 13U) == 0)
+				section = SECTION::FRAMEBUFFER;
 			else if (::strncmp(buffer, "[HD44780]", 9U) == 0)
 				section = SECTION::HD44780;
 			else if (::strncmp(buffer, "[Nextion]", 9U) == 0)
@@ -218,23 +218,23 @@ bool CConf::read()
 				m_tftSurenooBrightness = (unsigned int)::atoi(value);
 			else if (::strcmp(key, "ScreenLayout") == 0)
 				m_tftSurenooScreenLayout = (unsigned int)::atoi(value);
-		} else if (section == SECTION::SCREEN) {
+		} else if (section == SECTION::FRAMEBUFFER) {
 			if (::strcmp(key, "Device") == 0)
-				m_screenDevice = value;
+				m_frameBufferDevice = value;
 			else if (::strcmp(key, "Rotation") == 0)
-				m_screenRotation = (unsigned int)::atoi(value);
+				m_frameBufferRotation = (unsigned int)::atoi(value);
 			else if (::strcmp(key, "Brightness") == 0)
-				m_screenBrightness = (unsigned int)::atoi(value);
+				m_frameBufferBrightness = (unsigned int)::atoi(value);
 			else if (::strcmp(key, "IdleBrightness") == 0)
-				m_screenIdleBrightness = (unsigned int)::atoi(value);
+				m_frameBufferIdleBrightness = (unsigned int)::atoi(value);
 			else if (::strcmp(key, "IdleTimeout") == 0)
-				m_screenIdleTimeout = (unsigned int)::atoi(value);
+				m_frameBufferIdleTimeout = (unsigned int)::atoi(value);
 			else if (::strcmp(key, "OverlayDir") == 0)
-				m_screenOverlayDir = value;
+				m_frameBufferOverlayDir = value;
 			else if (::strcmp(key, "Overlay") == 0)
-				m_screenOverlay = value;
+				m_frameBufferOverlay = value;
 			else if (::strcmp(key, "VT") == 0)
-				m_screenVT = value;
+				m_frameBufferVT = value;
 		} else if (section == SECTION::HD44780) {
 			if (::strcmp(key, "Rows") == 0)
 				m_hd44780Rows = (unsigned int)::atoi(value);
@@ -421,14 +421,14 @@ unsigned int CConf::getTFTSurenooScreenLayout() const
 	return m_tftSurenooScreenLayout;
 }
 
-std::string  CConf::getScreenDevice() const { return m_screenDevice; }
-unsigned int CConf::getScreenRotation() const { return m_screenRotation; }
-unsigned int CConf::getScreenBrightness() const { return m_screenBrightness; }
-unsigned int CConf::getScreenIdleBrightness() const { return m_screenIdleBrightness; }
-unsigned int CConf::getScreenIdleTimeout() const { return m_screenIdleTimeout; }
-std::string  CConf::getScreenOverlayDir() const { return m_screenOverlayDir; }
-std::string  CConf::getScreenOverlay() const { return m_screenOverlay; }
-std::string  CConf::getScreenVT() const { return m_screenVT; }
+std::string  CConf::getFrameBufferDevice() const { return m_frameBufferDevice; }
+unsigned int CConf::getFrameBufferRotation() const { return m_frameBufferRotation; }
+unsigned int CConf::getFrameBufferBrightness() const { return m_frameBufferBrightness; }
+unsigned int CConf::getFrameBufferIdleBrightness() const { return m_frameBufferIdleBrightness; }
+unsigned int CConf::getFrameBufferIdleTimeout() const { return m_frameBufferIdleTimeout; }
+std::string  CConf::getFrameBufferOverlayDir() const { return m_frameBufferOverlayDir; }
+std::string  CConf::getFrameBufferOverlay() const { return m_frameBufferOverlay; }
+std::string  CConf::getFrameBufferVT() const { return m_frameBufferVT; }
 
 unsigned int CConf::getHD44780Rows() const
 {

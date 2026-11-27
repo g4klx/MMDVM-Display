@@ -16,7 +16,7 @@
  *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
-// A backend of CScreenCanvas that draws the status screens to a Linux
+// A backend of CFrameBufferCanvas that draws the status screens to a Linux
 // framebuffer device (/dev/fbN). It is not tied to any particular board or
 // output: an HDMI or DSI panel, composite out, an fbtft SPI TFT, or a plain
 // framebuffer on any Linux machine all work the same way. The canvas is
@@ -24,22 +24,22 @@
 // (crisp TrueType text), converted to the framebuffer's
 // pixel format, and dimmed in software on idle.
 
-#if !defined(DISPLAYSCREEN_H)
-#define DISPLAYSCREEN_H
+#if !defined(FRAMEBUFFER_H)
+#define FRAMEBUFFER_H
 
-#include "ScreenCanvas.h"
+#include "FrameBufferCanvas.h"
 
 #include <string>
 #include <cstdint>
 #include <vector>
 #include <linux/fb.h>
 
-class CDisplayScreen : public CScreenCanvas {
+class CFrameBuffer : public CFrameBufferCanvas {
 public:
-	CDisplayScreen(const std::string& device, unsigned int rotation, unsigned int brightness,
+	CFrameBuffer(const std::string& device, unsigned int rotation, unsigned int brightness,
 		     unsigned int idleBrightness, unsigned int idleTimeout, const std::string& layoutPath = "default",
 		     const std::string& vt = "auto");
-	virtual ~CDisplayScreen();
+	virtual ~CFrameBuffer();
 
 	// Detected display geometry (valid after open()). Refresh is 0 if the
 	// driver does not report mode timings (common on DRM fbdev emulation).

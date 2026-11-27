@@ -12,7 +12,7 @@
  *   GNU General Public License for more details.
  */
 
-#include "DisplayScreen.h"
+#include "FrameBuffer.h"
 #include "Log.h"
 
 #include <cstring>
@@ -64,7 +64,7 @@ static bool readFbGeom(const std::string& device, unsigned int rotation, unsigne
 	bool ok = (::ioctl(fd, FBIOGET_VSCREENINFO, &v) == 0 && v.xres > 0 && v.yres > 0);
 	if (ok) { w = v.xres; h = v.yres; }
 	::close(fd);
-	rotation = CDisplayScreen::validRotation(rotation);
+	rotation = CFrameBuffer::validRotation(rotation);
 	if (ok && (rotation == 90U || rotation == 270U)) { unsigned int t = w; w = h; h = t; }
 	return ok;
 }
@@ -73,7 +73,7 @@ static bool readFbGeom(const std::string& device, unsigned int rotation, unsigne
 // screen's aspect ratio (clamped to a sane landscape range), so the layout
 // fills the panel natively instead of stretching. A screen narrower than the
 // clamp (portrait) is letterboxed: see canvasScale.
-double CDisplayScreen::designWidth(const std::string& device, unsigned int rotation)
+double CFrameBuffer::designWidth(const std::string& device, unsigned int rotation)
 {
 	unsigned int w = 0, h = 0;
 	if (!readFbGeom(device, rotation, w, h) || h == 0U)
@@ -89,7 +89,7 @@ double CDisplayScreen::designWidth(const std::string& device, unsigned int rotat
 // screen narrower than the narrowest layout (portrait), the layout's width
 // fills the screen width and it is centred top to bottom (letterboxed), so
 // none of it is cut off. Never below half the design size.
-double CDisplayScreen::canvasScale(const std::string& device, unsigned int rotation)
+double CFrameBuffer::canvasScale(const std::string& device, unsigned int rotation)
 {
 	unsigned int w = 0, h = 0;
 	if (!readFbGeom(device, rotation, w, h) || h == 0U)
@@ -101,10 +101,10 @@ double CDisplayScreen::canvasScale(const std::string& device, unsigned int rotat
 	return scale;
 }
 
-CDisplayScreen::CDisplayScreen(const std::string& device, unsigned int rotation, unsigned int brightness,
+CFrameBuffer::CFrameBuffer(const std::string& device, unsigned int rotation, unsigned int brightness,
 			   unsigned int idleBrightness, unsigned int idleTimeout, const std::string& layoutPath,
 			   const std::string& vt) :
-CScreenCanvas(designWidth(device, rotation), 240.0, canvasScale(device, rotation), brightness, idleBrightness, idleTimeout, layoutPath),
+CFrameBufferCanvas(designWidth(device, rotation), 240.0, canvasScale(device, rotation), brightness, idleBrightness, idleTimeout, layoutPath),
 m_device(device),
 m_rotation(validRotation(rotation)),
 m_fd(-1),
@@ -126,18 +126,18 @@ m_origKDMode(KD_TEXT)
 {
 	::memset(&m_vinfo, 0, sizeof(m_vinfo));
 	if (m_rotation != rotation)
-		LogWarning("Screen: Rotation=%u is not 0, 90, 180 or 270; using 0", rotation);
+		LogWarning("FrameBuffer: Rotation=%u is not 0, 90, 180 or 270; using 0", rotation);
 }
 
-CDisplayScreen::~CDisplayScreen()
+CFrameBuffer::~CFrameBuffer()
 {
 }
 
-bool CDisplayScreen::openOutput()
+bool CFrameBuffer::openOutput()
 {
 	m_fd = ::open(m_device.c_str(), O_RDWR | O_CLOEXEC);
 	if (m_fd < 0) {
-		LogWarning("Screen: no framebuffer at %s (is a screen attached?)", m_device.c_str());
+		LogWarning("FrameBuffer: no framebuffer at %s (is a screen attached?)", m_device.c_str());
 		return false;
 	}
 
@@ -145,7 +145,7 @@ bool CDisplayScreen::openOutput()
 	struct fb_fix_screeninfo finfo;
 	if (::ioctl(m_fd, FBIOGET_VSCREENINFO, &vinfo) < 0 ||
 	    ::ioctl(m_fd, FBIOGET_FSCREENINFO, &finfo) < 0) {
-		LogError("Screen: cannot query %s", m_device.c_str());
+		LogError("FrameBuffer: cannot query %s", m_device.c_str());
 		::close(m_fd); m_fd = -1;
 		return false;
 	}
@@ -167,7 +167,7 @@ bool CDisplayScreen::openOutput()
 	    m_rLen < 1U || m_rLen > 8U || m_gLen < 1U || m_gLen > 8U || m_bLen < 1U || m_bLen > 8U ||
 	    m_rOff + m_rLen > m_bpp || m_gOff + m_gLen > m_bpp || m_bOff + m_bLen > m_bpp ||
 	    m_stride < (size_t)m_fbW * bytes) {
-		LogError("Screen: unsupported framebuffer format on %s (%ux%u %ubpp, stride %u)",
+		LogError("FrameBuffer: unsupported framebuffer format on %s (%ux%u %ubpp, stride %u)",
 			 m_device.c_str(), m_fbW, m_fbH, m_bpp, m_stride);
 		::close(m_fd); m_fd = -1;
 		return false;
@@ -184,9 +184,9 @@ bool CDisplayScreen::openOutput()
 			m_refreshHz = 1e12 / ((double)vinfo.pixclock * htot * vtot);
 	}
 	if (m_refreshHz > 0.0)
-		LogMessage("Screen: detected %ux%u @ %.1fHz, %ubpp", m_fbW, m_fbH, m_refreshHz, m_bpp);
+		LogMessage("FrameBuffer: detected %ux%u @ %.1fHz, %ubpp", m_fbW, m_fbH, m_refreshHz, m_bpp);
 	else
-		LogMessage("Screen: detected %ux%u (refresh unknown), %ubpp", m_fbW, m_fbH, m_bpp);
+		LogMessage("FrameBuffer: detected %ux%u (refresh unknown), %ubpp", m_fbW, m_fbH, m_bpp);
 
 	// Fast path: plain little-endian RGB565 lets us memcpy canvas rows.
 	m_fastRGB565 = (m_bpp == 16U && m_rOff == 11U && m_rLen == 5U &&
@@ -210,7 +210,7 @@ bool CDisplayScreen::openOutput()
 
 	void* m = ::mmap(nullptr, m_mapLen, PROT_READ | PROT_WRITE, MAP_SHARED, m_fd, 0);
 	if (m == MAP_FAILED) {
-		LogError("Screen: cannot mmap %s", m_device.c_str());
+		LogError("FrameBuffer: cannot mmap %s", m_device.c_str());
 		::close(m_fd); m_fd = -1;
 		return false;
 	}
@@ -223,13 +223,13 @@ bool CDisplayScreen::openOutput()
 
 	::memset(m_map, 0, m_mapLen);
 
-	LogMessage("Screen: %ux%u %ubpp on %s, rotation %u (render %ux%u at +%d,+%d%s)", m_fbW, m_fbH, m_bpp,
+	LogMessage("FrameBuffer: %ux%u %ubpp on %s, rotation %u (render %ux%u at +%d,+%d%s)", m_fbW, m_fbH, m_bpp,
 		   m_device.c_str(), m_rotation, m_width, m_height, m_offX, m_offY,
 		   (m_fastRGB565 && m_rotation == 0U) ? ", fast" : "");
 	return true;
 }
 
-void CDisplayScreen::closeOutput()
+void CFrameBuffer::closeOutput()
 {
 	teardownVT();                 // restore the console before releasing the fb
 	if (m_map != nullptr) {
@@ -239,7 +239,7 @@ void CDisplayScreen::closeOutput()
 	if (m_fd >= 0) { ::close(m_fd); m_fd = -1; }
 }
 
-void CDisplayScreen::applyBrightness(unsigned int pct)
+void CFrameBuffer::applyBrightness(unsigned int pct)
 {
 	if (pct > 100U) pct = 100U;
 	m_curBright = pct;
@@ -247,14 +247,14 @@ void CDisplayScreen::applyBrightness(unsigned int pct)
 		blitToScreen();
 }
 
-void CDisplayScreen::present()
+void CFrameBuffer::present()
 {
 	if (m_map == nullptr)
 		return;
 	blitToScreen();
 }
 
-void CDisplayScreen::blitToScreen()
+void CFrameBuffer::blitToScreen()
 {
 	// Another VT has the screen (the user switched to the console): leave the
 	// framebuffer alone until ours is active again.
@@ -332,28 +332,28 @@ void CDisplayScreen::blitToScreen()
 // Grab a VT and put it in graphics mode (like X), so the kernel console stops
 // drawing on the framebuffer. Returns false - and we just draw directly - when
 // VT=off, there is no console, or no VT is available.
-bool CDisplayScreen::setupVT()
+bool CFrameBuffer::setupVT()
 {
 	if (m_vtConfig == "off" || m_vtConfig == "Off" || m_vtConfig == "OFF")
 		return false;
 
 	m_consoleFd = ::open("/dev/tty0", O_RDWR | O_CLOEXEC);
 	if (m_consoleFd < 0) {
-		LogMessage("Screen: no text console (/dev/tty0); drawing directly");
+		LogMessage("FrameBuffer: no text console (/dev/tty0); drawing directly");
 		return false;
 	}
 
 	// Which VT: a given number, or a free one (VT_OPENQRY, as X does).
 	if (m_vtConfig == "auto" || m_vtConfig.empty()) {
 		if (::ioctl(m_consoleFd, VT_OPENQRY, &m_vtNum) < 0 || m_vtNum <= 0) {
-			LogWarning("Screen: no free VT; drawing on the current console");
+			LogWarning("FrameBuffer: no free VT; drawing on the current console");
 			::close(m_consoleFd); m_consoleFd = -1;
 			return false;
 		}
 	} else {
 		m_vtNum = (int)::strtol(m_vtConfig.c_str(), nullptr, 10);
 		if (m_vtNum <= 0) {
-			LogWarning("Screen: invalid VT '%s'; drawing on the current console", m_vtConfig.c_str());
+			LogWarning("FrameBuffer: invalid VT '%s'; drawing on the current console", m_vtConfig.c_str());
 			::close(m_consoleFd); m_consoleFd = -1;
 			return false;
 		}
@@ -367,7 +367,7 @@ bool CDisplayScreen::setupVT()
 	::snprintf(ttyPath, sizeof(ttyPath), "/dev/tty%d", m_vtNum);
 	m_vtFd = ::open(ttyPath, O_RDWR | O_CLOEXEC);
 	if (m_vtFd < 0) {
-		LogWarning("Screen: cannot open %s; drawing on the current console", ttyPath);
+		LogWarning("FrameBuffer: cannot open %s; drawing on the current console", ttyPath);
 		::close(m_consoleFd); m_consoleFd = -1;
 		return false;
 	}
@@ -392,18 +392,18 @@ bool CDisplayScreen::setupVT()
 	vm.relsig = SIGUSR1;
 	vm.acqsig = SIGUSR2;
 	if (::ioctl(m_vtFd, VT_SETMODE, &vm) < 0)
-		LogWarning("Screen: VT_SETMODE failed; a switch away may fight the console");
+		LogWarning("FrameBuffer: VT_SETMODE failed; a switch away may fight the console");
 
 	g_vtFd         = m_vtFd;
 	g_vtActive     = 1;
 	g_vtReacquired = 0;
 	m_useVT        = true;
-	LogMessage("Screen: on VT %d (Ctrl+Alt+F%d to return here, Ctrl+Alt+F1 for the console)", m_vtNum, m_vtNum);
+	LogMessage("FrameBuffer: on VT %d (Ctrl+Alt+F%d to return here, Ctrl+Alt+F1 for the console)", m_vtNum, m_vtNum);
 	return true;
 }
 
 // Give the VT back: auto switching, text mode, and return to the console.
-void CDisplayScreen::teardownVT()
+void CFrameBuffer::teardownVT()
 {
 	if (!m_useVT)
 		return;
@@ -434,7 +434,7 @@ void CDisplayScreen::teardownVT()
 // Our VT may have just come back after the user switched away; the console
 // could have drawn over the framebuffer, so repaint the current frame at once
 // rather than waiting for the next 1 fps flush.
-void CDisplayScreen::backendTick()
+void CFrameBuffer::backendTick()
 {
 	if (g_vtReacquired) {
 		g_vtReacquired = 0;
