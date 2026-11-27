@@ -58,6 +58,17 @@ public:
 	unsigned int getTFTSurenooBrightness() const;
 	unsigned int getTFTSurenooScreenLayout() const;
 
+
+	// The Screen section (any Linux framebuffer: HDMI, DSI, composite, fbtft, ...)
+	std::string  getScreenDevice() const;
+	unsigned int getScreenRotation() const;
+	unsigned int getScreenBrightness() const;
+	unsigned int getScreenIdleBrightness() const;
+	unsigned int getScreenIdleTimeout() const;
+	std::string  getScreenOverlayDir() const;
+	std::string  getScreenOverlay() const;
+	std::string  getScreenVT() const;
+
 	// The HD44780 section
 	unsigned int getHD44780Rows() const;
 	unsigned int getHD44780Columns() const;
@@ -125,6 +136,16 @@ private:
 	std::string  m_tftSurenooPort;
 	unsigned int m_tftSurenooBrightness;
 	unsigned int m_tftSurenooScreenLayout;
+
+
+	std::string  m_screenDevice;
+	unsigned int m_screenRotation;
+	unsigned int m_screenBrightness;
+	unsigned int m_screenIdleBrightness;
+	unsigned int m_screenIdleTimeout;
+	std::string  m_screenOverlayDir;
+	std::string  m_screenOverlay;
+	std::string  m_screenVT;
 
 	unsigned int m_hd44780Rows;
 	unsigned int m_hd44780Columns;

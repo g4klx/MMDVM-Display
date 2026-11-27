@@ -1,0 +1,83 @@
+# =====================================================================
+#  MMDVM-Display - default overlay
+# =====================================================================
+#  This is the full, built-in layout, provided as an editable file so you
+#  can copy it and make your own. It is what the binary uses when no overlay
+#  is configured.
+#
+#  Install: put this file (or your edited copy) in your OverlayDir and select
+#  it in MMDVM-Display.ini:
+#
+#      [Screen]
+#      OverlayDir=/etc/mmdvm-display/overlays
+#      Overlay=default
+#
+#  See README.md in this folder for the full reference. Quick notes:
+#    * Coordinates are a 240-high design space; width tracks the screen's
+#      aspect ratio. Use plain numbers for y (and fixed left margins), and
+#      % / center / right / fill for anything that should span the width.
+#    * y is the VERTICAL CENTRE of the text. align sets the horizontal anchor:
+#      left (x = left edge), center (x = centre), right (x = right edge).
+#    * $name is a live field (see the field list in README). An element whose
+#      field is empty is simply not drawn.
+#    * Colours: ink grey white accent green red blue. Sizes: S M L or a number.
+# =====================================================================
+
+# ---- Idle: the resting screen -------------------------------------------
+[page idle]
+wordmark
+text "$callsign"  x=center y=119 size=L align=center color=ink fit=fill
+text "$id"        x=center y=148 size=S align=center color=grey
+rule              x=16 y=163 w=fill color=grey
+text "IP"         x=16 y=176 size=S color=grey
+text "$ip"        x=74 y=176 size=S color=ink fit=100%-90
+text "RX"         x=16 y=198 size=S color=grey
+text "$rx"        x=74 y=198 size=S color=ink fit=50%-82
+text "TX"         x=50% y=198 size=S color=grey
+text "$tx"        x=50%+58 y=198 size=S color=ink fit=50%-74
+text "$status"    x=center y=220 size=S align=center color=grey fit=fill
+
+# ---- Call: every single-stream mode (the banner adapts to the mode) -----
+#  D-Star, DMR simplex, System Fusion, P25, NXDN, POCSAG and FM.
+[page call]
+banner
+text "$src"   x=16 y=122 size=M color=ink   fit=100%-32
+text "$dst"   x=16 y=158 size=M color=ink   fit=100%-32
+text "$info"  x=16 y=194 size=M color=ink   fit=100%-32
+text "$ta"    x=16 y=194 size=M color=green fit=100%-32
+text "$rssi1" x=16      y=bottom-14 size=S color=grey fit=50%-24
+text "$ber1"  x=100%-16 y=bottom-14 size=S align=right color=grey
+
+# ---- DMR duplex: both timeslots side by side ----------------------------
+[page dmr2]
+banner
+rect           x=50% y=112 w=1 h=104 color=grey
+text "TS1"     x=16 y=116 size=S color=blue
+text "$s1src"  x=16 y=138 size=M color=ink   fit=50%-24
+text "$s1dst"  x=16 y=172 size=S color=ink   fit=50%-24
+text "$s1ta"   x=16 y=196 size=S color=green fit=50%-24
+text "$s1rssi" x=16     y=bottom-14 size=S color=grey
+text "$s1ber"  x=50%-12 y=bottom-14 size=S align=right color=grey
+text "TS2"     x=50%+12 y=116 size=S color=blue
+text "$s2src"  x=50%+12 y=138 size=M color=ink   fit=50%-36
+text "$s2dst"  x=50%+12 y=172 size=S color=ink   fit=50%-36
+text "$s2ta"   x=50%+12 y=196 size=S color=green fit=50%-36
+text "$s2rssi" x=50%+12  y=bottom-14 size=S color=grey
+text "$s2ber"  x=100%-12 y=bottom-14 size=S align=right color=grey
+
+# ---- Status pages -------------------------------------------------------
+[page error]
+wordmark
+text "ERROR"   x=center y=141 size=L align=center color=red
+
+[page lockout]
+wordmark
+text "LOCKOUT" x=center y=141 size=L align=center color=red
+
+[page quit]
+wordmark
+text "STOPPED" x=center y=141 size=L align=center color=grey
+
+[page cw]
+wordmark
+text "CW ID"   x=center y=141 size=L align=center color=ink

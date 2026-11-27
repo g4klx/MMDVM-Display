@@ -20,6 +20,14 @@
 #include "MQTTConnection.h"
 #include "UARTController.h"
 #include "TFTSurenoo.h"
+// The Screen display drives a Linux framebuffer, so it is built on Linux only
+// (the Windows project and other systems get the other displays)
+#if !defined(__linux__) && !defined(NO_SCREEN)
+#define NO_SCREEN
+#endif
+#if !defined(NO_SCREEN)
+#include "DisplayScreen.h"
+#endif
 #include "StopWatch.h"
 #include "LCDproc.h"
 #include "Nextion.h"
@@ -345,6 +353,35 @@ bool CMMDVMDisplay::createDisplay()
 			serial = new CUARTController(port, 115200U);
 
 		m_display = new CTFTSurenoo(serial, brightness, screenLayout);
+#if !defined(NO_SCREEN)
+	} else if (type == "Screen") {
+		std::string device        = m_conf.getScreenDevice();
+		unsigned int rotation     = m_conf.getScreenRotation();
+		unsigned int brightness   = m_conf.getScreenBrightness();
+		unsigned int idleBright   = m_conf.getScreenIdleBrightness();
+		unsigned int idleTimeout  = m_conf.getScreenIdleTimeout();
+		std::string overlayDir    = m_conf.getScreenOverlayDir();
+		std::string overlay       = m_conf.getScreenOverlay();
+		std::string vt            = m_conf.getScreenVT();
+
+		// Resolve the overlay (layout) file: OverlayDir/Overlay, unless Overlay
+		// is empty/"default" (built-in) or already an absolute path.
+		std::string layoutPath = "default";
+		if (!overlay.empty() && overlay != "default") {
+			if (overlay[0] == '/' || overlayDir.empty())
+				layoutPath = overlay;
+			else
+				layoutPath = overlayDir + "/" + overlay;
+		}
+
+		LogInfo("    Device: %s", device.c_str());
+		LogInfo("    Rotation: %u", rotation);
+		LogInfo("    Brightness: %u, idle %u after %us", brightness, idleBright, idleTimeout);
+		LogInfo("    Overlay: %s", layoutPath.c_str());
+		LogInfo("    VT: %s", vt.c_str());
+
+		m_display = new CDisplayScreen(device, rotation, brightness, idleBright, idleTimeout, layoutPath, vt);
+#endif
 	} else if (type == "Nextion") {
 		std::string port            = m_conf.getNextionPort();
 		unsigned int speed          = m_conf.getNextionSpeed();
@@ -497,6 +534,20 @@ bool CMMDVMDisplay::createDisplay()
 	bool ret = m_display->open();
 	if (!ret) {
 		delete m_display;
+		m_display = nullptr;
+		// A missing/undetected framebuffer is not a fatal error: gate the
+		// Screen display and keep the service running (a dummy display), so a
+		// supervisor does not restart-loop over a box with no screen attached.
+		if (type == "Screen") {
+			LogWarning("No screen detected; the Screen display is disabled, the service will keep running");
+			m_display = new CDummy;
+			if (!m_display->open()) {
+				delete m_display;
+				m_display = nullptr;
+				return false;
+			}
+			return true;
+		}
 		return false;
 	}
 
