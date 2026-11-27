@@ -28,8 +28,22 @@ DEPS = $(SRCS:.cpp=.d)
 #CFLAGS  = -g -O3 -Wall -std=c++11 -MMD -MD -pthread -DUSE_HD44780 -DUSE_PCF8574_DISPLAY -I/usr/local/include
 #LIBS    = -lwiringPi -lwiringPiDev -lpthread -lutil -lmosquitto
 
+# Graphical framebuffer display (Display=FrameBuffer): the vector/overlay
+# renderer with PNG support. Built in by default on Linux; run
+# "make NO_FRAMEBUFFER=1" to leave it out entirely - the binary is about
+# 216 KB smaller (armhf) and no renderer is compiled. It needs the Linux framebuffer, so it is always left
+# out on other systems.
+ifneq ($(shell uname -s),Linux)
+NO_FRAMEBUFFER = 1
+endif
+ifdef NO_FRAMEBUFFER
+CFLAGS += -DNO_FRAMEBUFFER
+else
+FRAMEBUFFER_OBJS = FrameBufferCanvas.o FrameBuffer.o FrameBufferLayout.o
+endif
+
 OBJS1 =	Conf.o Display.o MMDVM-Display.o Dummy.o HD44780.o IdLookup.o LCDproc.o Log.o MQTTConnection.o ModemSerialPort.o Mutex.o \
-	Nextion.o OLED.o SerialPort.o StopWatch.o TFTSurenoo.o Thread.o Timer.o UARTController.o Utils.o
+	Nextion.o OLED.o SerialPort.o StopWatch.o TFTSurenoo.o $(FRAMEBUFFER_OBJS) Thread.o Timer.o UARTController.o Utils.o
 
 OBJS2 =	Conf.o Log.o MQTTConnection.o ModemSerialPort.o Mutex.o NextionUpdater.o SerialPort.o StopWatch.o Thread.o Timer.o \
 	UARTController.o Utils.o
